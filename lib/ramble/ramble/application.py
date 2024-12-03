@@ -967,26 +967,21 @@ class ApplicationBase(metaclass=ApplicationMeta):
         if self.expander.workload_name in self.workloads:
             workload = self.workloads[self.expander.workload_name]
 
+            new_env_vars = {}
             for name, env_var in workload.environment_variables.items():
                 action = "set"
                 value = env_var.value
 
-                # Since the type coming from the schema can either be None, or
-                # a complex polymorphic type we need to ensure it has a
-                # sensible base structure when it is not given
-                if not self._env_variable_sets:
-                    self._env_variable_sets.append({"set": {}})
-
-                # Since the type coming from the schema can either be None, or
-                # a complex polymorphic type we need to ensure it has a
-                # sensible base structure when it is not given
-                if not self._env_variable_sets:
-                    self._env_variable_sets.append({"set": {}})
-
+                add = True
                 for env_var_set in self._env_variable_sets:
                     if action in env_var_set:
-                        if env_var.name not in env_var_set[action].keys():
-                            env_var_set[action][env_var.name] = value
+                        if env_var.name in env_var_set[action].keys():
+                            add = False
+
+                if add:
+                    new_env_vars[env_var.name] = value
+
+            self._env_variable_sets.append({"set": new_env_vars})
 
     def _define_commands(
         self, exec_graph, success_list=ramble.success_criteria.ScopedCriteriaList()
