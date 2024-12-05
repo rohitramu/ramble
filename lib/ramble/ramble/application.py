@@ -1705,9 +1705,10 @@ class ApplicationBase(metaclass=ApplicationMeta):
                                     if context not in fom_values:
                                         fom_values[context] = {}
                                     fom_val = fom_match.group(fom_conf["group"])
+                                    fom_unit = self.expander.expand_var(fom_conf["units"], extra_vars=fom_vars)
                                     fom_values[context][fom_name] = {
                                         "value": fom_val,
-                                        "units": fom_conf["units"],
+                                        "units": fom_unit,
                                         "origin": fom_conf["origin"],
                                         "origin_type": fom_conf["origin_type"],
                                         "fom_type": fom_conf["fom_type"],
