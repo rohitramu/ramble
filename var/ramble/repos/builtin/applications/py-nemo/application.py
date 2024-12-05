@@ -43,6 +43,7 @@ class PyNemo(ExecutableApplication):
     executable(
         "pretraining_exec",
         'bash -c "cd /opt/NeMo; git rev-parse HEAD; '
+        "{custom_injected_string}; "
         "python3 -u /opt/NeMo/examples/nlp/language_modeling/megatron_gpt_pretraining.py "
         '--config-path={nemo_generated_config_path} --config-name={nemo_generated_config_name}"',
         use_mpi=True,
@@ -75,6 +76,13 @@ class PyNemo(ExecutableApplication):
     workload_group("all_workloads", workloads=["pretraining"])
     workload_group("pretraining", workloads=["pretraining"])
     all_workloads = ["pretraining"]
+
+    workload_variable(
+        "custom_injected_string",
+        default="",
+        description="Custom string to inject before execution NeMo workload",
+        workload_group="all_workloads",
+    )
 
     workload_variable(
         "model_inputs",
