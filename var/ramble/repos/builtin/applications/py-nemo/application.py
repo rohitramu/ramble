@@ -16,6 +16,8 @@ import spack.util.spack_yaml as syaml
 
 import ramble.util.yaml_generation
 
+from spack.util.path import canonicalize_path
+
 
 class PyNemo(ExecutableApplication):
     """A scalable generative AI framework built for researchers and
@@ -481,12 +483,8 @@ class PyNemo(ExecutableApplication):
         not defined in the input ramble.yaml or workload definition."""
 
         base_config = get_file_path(
-            os.path.abspath(
-                os.path.expandvars(
-                    os.path.expanduser(
-                        self.expander.expand_var_name("nemo_base_config")
-                    )
-                )
+            canonicalize_path(
+                self.expander.expand_var_name("nemo_base_config")
             ),
             workspace,
         )
@@ -527,12 +525,8 @@ class PyNemo(ExecutableApplication):
 
     def _write_config(self, workspace, app_inst):
         base_config = get_file_path(
-            os.path.abspath(
-                os.path.expandvars(
-                    os.path.expanduser(
-                        self.expander.expand_var_name("nemo_base_config")
-                    )
-                )
+            canonicalize_path(
+                self.expander.expand_var_name("nemo_base_config")
             ),
             workspace,
         )
@@ -582,9 +576,11 @@ class PyNemo(ExecutableApplication):
                     config_data, var_name
                 )
 
-        config_path = os.path.join(
-            self.expander.expand_var("{nemo_generated_config_path}"),
-            self.expander.expand_var("{nemo_generated_config_name}"),
+        config_path = canonicalize_path(
+            os.path.join(
+                self.expander.expand_var("{nemo_generated_config_path}"),
+                self.expander.expand_var("{nemo_generated_config_name}"),
+            )
         )
 
         # Ensure all instances of ${data_dir} are replaced correctly
@@ -610,7 +606,7 @@ class PyNemo(ExecutableApplication):
 
     def _preprocess_log(self, workspace, app_inst):
         log_file = get_file_path(
-            os.path.abspath(self.expander.expand_var_name("log_file")),
+            canonicalize_path(self.expander.expand_var_name("log_file")),
             workspace,
         )
 

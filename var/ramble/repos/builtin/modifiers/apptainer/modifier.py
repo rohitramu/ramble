@@ -11,6 +11,7 @@ import os
 
 from ramble.modkit import *
 from ramble.util.hashing import hash_string
+from spack.util.path import canonicalize_path
 
 import llnl.util.filesystem as fs
 
@@ -231,8 +232,12 @@ class Apptainer(BasicModifier):
 
         uri = self.expander.expand_var_name("container_uri")
 
-        container_dir = self.expander.expand_var_name("container_dir")
-        container_path = self.expander.expand_var_name("container_path")
+        container_dir = canonicalize_path(
+            self.expander.expand_var_name("container_dir")
+        )
+        container_path = canonicalize_path(
+            self.expander.expand_var_name("container_path")
+        )
 
         pull_args = ["pull", container_path, uri]
 
@@ -261,7 +266,9 @@ class Apptainer(BasicModifier):
         id_regex = re.compile(r"\s*ID:\s*(?P<id>\S+)")
         container_name = self.expander.expand_var_name("container_name")
         container_uri = self.expander.expand_var_name("container_uri")
-        container_path = self.expander.expand_var_name("container_path")
+        container_path = canonicalize_path(
+            self.expander.expand_var_name("container_path")
+        )
         header_args = ["sif", "header", container_path]
 
         inventory = []

@@ -10,6 +10,7 @@ import os
 
 from ramble.modkit import *
 from ramble.util.hashing import hash_file, hash_string
+from spack.util.path import canonicalize_path
 
 import llnl.util.filesystem as fs
 
@@ -218,8 +219,12 @@ class PyxisEnroot(BasicModifier):
 
         uri = self.expander.expand_var_name("container_uri")
 
-        container_dir = self.expander.expand_var_name("container_dir")
-        container_path = self.expander.expand_var_name("container_path")
+        container_dir = canonicalize_path(
+            self.expander.expand_var_name("container_dir")
+        )
+        container_path = canonicalize_path(
+            self.expander.expand_var_name("container_path")
+        )
 
         import_args = ["import", "-o", container_path, "--", uri]
 
@@ -264,7 +269,9 @@ class PyxisEnroot(BasicModifier):
             ]
 
             for extract_path in extract_paths:
-                expanded_path = self.expander.expand_var(extract_path)
+                expanded_path = canonicalize_path(
+                    self.expander.expand_var(extract_path)
+                )
                 self.unsquashfs_runner.execute(
                     self.unsquashfs_runner.command,
                     unsquash_args + [expanded_path],
@@ -281,7 +288,9 @@ class PyxisEnroot(BasicModifier):
             (dict): Artifact inventory for container attributes
         """
         container_name = self.expander.expand_var_name("container_name")
-        container_path = self.expander.expand_var_name("container_path")
+        container_path = canonicalize_path(
+            self.expander.expand_var_name("container_path")
+        )
         container_uri = self.expander.expand_var_name("container_uri")
         inventory = []
 
@@ -298,9 +307,7 @@ class PyxisEnroot(BasicModifier):
         if os.path.isfile(container_path):
 
             hash_file_path = (
-                self.expander.expand_var_name("container_path")
-                + "."
-                + self.container_hash_file_extension
+                container_path + "." + self.container_hash_file_extension
             )
 
             if os.path.exists(hash_file_path):
