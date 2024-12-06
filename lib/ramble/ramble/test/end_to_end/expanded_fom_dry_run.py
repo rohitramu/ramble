@@ -67,9 +67,11 @@ ramble:
 
         exp_dir = os.path.join(ws1.root, "experiments", "expanded_foms", "test_wl", "single_exp")
         fom_out_file = os.path.join(exp_dir, "single_exp.out")
+
+        unit = "seconds"
         with open(fom_out_file, "w+") as f:
             for expected in expected_expansions:
-                f.write(f"Collect FOM {expected} = 567.8 seconds\n")
+                f.write(f"Collect FOM {expected} = 567.8 {unit}\n")
 
         ws1._re_read()
         output = workspace("analyze", global_args=["-w", workspace_name])
@@ -79,4 +81,4 @@ ramble:
         with open(text_results_files[0]) as f:
             data = f.read()
             for expected in expected_expansions:
-                assert f"test_fom {expected} = 567.8" in data
+                assert f"test_fom {expected} = 567.8 {unit}" in data

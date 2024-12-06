@@ -31,10 +31,10 @@ class ExpandedFoms(ExecutableApplication):
 
     figure_of_merit(
         "test_fom {var}",
-        fom_regex=r"Collect FOM (?P<var>\w+)\s=\s(?P<test>[0-9]+\.[0-9]+) seconds",
+        fom_regex=r"Collect FOM (?P<var>\w+)\s=\s(?P<test>[0-9]+\.[0-9]+) (?P<unit>\w+)",
         log_file="{log_file}",
         group_name="test",
-        units="s",
+        units="{unit}",
     )
 
     success_criteria("Run", mode="string", match=r"Collect", file="{log_file}")
