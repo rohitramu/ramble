@@ -81,7 +81,7 @@ class PyNemo(ExecutableApplication):
 
     workload_variable(
         "custom_injected_string",
-        default="",
+        default="tail /dev/null",
         description="Custom string to inject before execution NeMo workload",
         workload_group="all_workloads",
     )
