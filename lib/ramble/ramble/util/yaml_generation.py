@@ -25,7 +25,6 @@ Would translate to `foo.bar.baz = 1.0` in Ramble syntax.
 
 """
 
-from collections import OrderedDict
 from typing import Dict, Any
 import ruamel.yaml as yaml
 import spack.util.spack_yaml as syaml
@@ -131,7 +130,7 @@ def set_config_value(config_data: Dict, option_name: str, option_value: Any, for
         if cur_part not in option_scope:
             if not force:
                 return
-            option_scope[cur_part] = OrderedDict()
+            option_scope[cur_part] = {}
         option_scope = option_scope[cur_part]
 
     set_value = force or option_parts[0] in option_scope
@@ -159,7 +158,7 @@ def remove_config_value(config_data: Dict, option_name: str):
     while len(option_parts) > 1:
         cur_part = option_parts.pop(0)
         if cur_part not in option_scope:
-            option_scope[cur_part] = OrderedDict()
+            return
         reverse_stack.append((option_scope, cur_part))
         option_scope = option_scope[cur_part]
 
