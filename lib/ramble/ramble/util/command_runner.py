@@ -45,7 +45,7 @@ class CommandRunner:
 
     def set_dry_run(self, dry_run=False):
         """
-        Set the dry_run state of this spack runner
+        Set the dry_run state of this runner
         """
         self.dry_run = dry_run
 
