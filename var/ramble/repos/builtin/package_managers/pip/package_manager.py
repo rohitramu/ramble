@@ -252,7 +252,7 @@ def _extract_pkg_name(pkg_spec):
     return match.group("pkg_name") if match else None
 
 
-class PipRunner(ramble.util.command_runner.CommandRunner):
+class PipRunner(CommandRunner):
     """Runner for executing pip+venv commands."""
 
     _venv_name = ".venv"
@@ -272,10 +272,6 @@ class PipRunner(ramble.util.command_runner.CommandRunner):
     def configure_env(self, path):
         """Configure the venv path for subsequent commands"""
         self.env_path = path
-
-    def set_dry_run(self, dry_run=False):
-        """Set the dry_run state of this pip runner"""
-        self.dry_run = dry_run
 
     def create_env(self, env_path):
         """Ensure a venv environment is created"""

@@ -21,7 +21,6 @@ import spack.util.spack_yaml as syaml
 import ramble.config
 import ramble.error
 import ramble.util.hashing
-import ramble.util.command_runner
 from ramble.util.logger import logger
 
 
@@ -92,7 +91,7 @@ class SpackLightweight(PackageManagerBase):
                     logger.debug(f"Installing compiler: {compiler_spec}")
                     self.runner.install_compiler(compiler_spec)
 
-        except ramble.util.command_runner.RunnerError as e:
+        except RunnerError as e:
             logger.die(e)
 
     register_phase("software_create_env", pipeline="mirror")
@@ -197,7 +196,7 @@ class SpackLightweight(PackageManagerBase):
 
                 self.runner.deactivate()
 
-        except ramble.util.command_runner.RunnerError as e:
+        except RunnerError as e:
             logger.die(e)
 
     register_phase(
@@ -238,7 +237,7 @@ class SpackLightweight(PackageManagerBase):
             if not env_concretized:
                 self.runner.concretize()
 
-        except ramble.util.command_runner.RunnerError as e:
+        except RunnerError as e:
             logger.die(e)
 
     register_phase(
@@ -320,7 +319,7 @@ class SpackLightweight(PackageManagerBase):
             for i in range(error_start, error_start + failed):
                 workspace.software_mirror_stats.errors.add(i)
 
-        except ramble.util.command_runner.RunnerError as e:
+        except RunnerError as e:
             if self.environment_required():
                 logger.die(e)
             pass
@@ -348,7 +347,7 @@ class SpackLightweight(PackageManagerBase):
             self.runner.push_to_spack_cache(workspace.spack_cache_path)
 
             self.runner.deactivate()
-        except ramble.util.command_runner.RunnerError as e:
+        except RunnerError as e:
             if self.environment_required():
                 logger.die(e)
             pass
@@ -365,7 +364,7 @@ class SpackLightweight(PackageManagerBase):
 
         try:
             pkgman_version = self.runner.get_version()
-        except ramble.util.command_runner.RunnerError:
+        except RunnerError:
             pkgman_version = "unknown"
 
         self.app_inst.hash_inventory["package_manager"].append(
@@ -433,7 +432,7 @@ class SpackLightweight(PackageManagerBase):
 
             self.runner.deactivate()
 
-        except ramble.util.command_runner.RunnerError as e:
+        except RunnerError as e:
             if self.environment_required():
                 logger.die(e)
             pass
@@ -523,7 +522,7 @@ spack_namespace = "spack"
 package_name_regex = re.compile(r"[\s-]*(?P<package_name>[\w][\w-]+).*")
 
 
-class SpackRunner(ramble.util.command_runner.CommandRunner):
+class SpackRunner(CommandRunner):
     """Runner for executing several spack commands
 
     The SpackRunner class is primarily used to manage spack environments
@@ -638,12 +637,6 @@ class SpackRunner(ramble.util.command_runner.CommandRunner):
 
         return spack_version
 
-    def set_dry_run(self, dry_run=False):
-        """
-        Set the dry_run state of this spack runner
-        """
-        self.dry_run = dry_run
-
     def set_compiler_config_dir(self, path=None):
         """
         Set the config path to use when installing compilers
@@ -711,9 +704,7 @@ class SpackRunner(ramble.util.command_runner.CommandRunner):
         this runner.
         """
         if os.path.exists(path) and not os.path.isdir(path):
-            raise ramble.util.command_runner.RunnerError(
-                "Unable to create environment %s" % path
-            )
+            raise RunnerError("Unable to create environment %s" % path)
 
         if not os.path.exists(path):
             fs.mkdirp(path)
@@ -753,9 +744,7 @@ class SpackRunner(ramble.util.command_runner.CommandRunner):
             )
             shell_flag = "--fish"
         else:
-            raise ramble.util.command_runner.RunnerError(
-                "Shell %s not supported" % self.shell
-            )
+            raise RunnerError("Shell %s not supported" % self.shell)
 
         self._load_compiler_shell(spec, shell_flag, regex)
 
@@ -853,7 +842,7 @@ class SpackRunner(ramble.util.command_runner.CommandRunner):
         Ensure the spack environment is active in subsequent commands.
         """
         if not self.env_path:
-            raise ramble.util.command_runner.NoPathRunnerError(
+            raise NoPathRunnerError(
                 "Environment runner has no path configured"
             )
 
@@ -868,7 +857,7 @@ class SpackRunner(ramble.util.command_runner.CommandRunner):
         Ensure the spack environment is not active in subsequent commands.
         """
         if not self.env_path:
-            raise ramble.util.command_runner.NoPathRunnerError(
+            raise NoPathRunnerError(
                 "Environment runner has no path configured"
             )
 
@@ -880,7 +869,7 @@ class SpackRunner(ramble.util.command_runner.CommandRunner):
 
     def _check_active(self):
         if not self.env_path:
-            raise ramble.util.command_runner.NoPathRunnerError(
+            raise NoPathRunnerError(
                 "Environment runner has no path configured"
             )
 
@@ -1354,10 +1343,10 @@ class SpackRunner(ramble.util.command_runner.CommandRunner):
                         yield info_dict
 
 
-class NoActiveEnvironmentError(ramble.util.command_runner.RunnerError):
+class NoActiveEnvironmentError(RunnerError):
     """Raised when an environment command is executed without an active
     environment."""
 
 
-class InvalidExternalEnvironment(ramble.util.command_runner.RunnerError):
+class InvalidExternalEnvironment(RunnerError):
     """Raised when an invalid external spack environment is passed in"""
