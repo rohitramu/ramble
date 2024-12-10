@@ -170,6 +170,32 @@ def test_env_configs_apply(tmpdir, capsys, request):
         pytest.skip("%s" % e)
 
 
+@pytest.mark.parametrize("link_type", ["symlink", "hardlink", "copy"])
+def test_env_view_link_types(tmpdir, request, link_type, mutable_config):
+    with ramble.config.override("config:spack:", {"env_view": {"link_type": f"{link_type}"}}):
+        try:
+            env_path = str(tmpdir.join(request.node.name))
+            # Dry run so we don't actually install zlib
+            sr = SpackRunner(dry_run=True)
+            sr.create_env(env_path)
+            sr.activate()
+            sr.add_spec("zlib")
+            sr.generate_env_file()
+
+            sr.deactivate()
+
+            env_file = os.path.join(env_path, "spack.yaml")
+
+            assert os.path.exists(env_file)
+
+            with open(env_file) as f:
+                data = f.read()
+                assert f"link_type: {link_type}" in data
+
+        except RunnerError as e:
+            pytest.skip("%s" % e)
+
+
 def test_default_concretize_flags(tmpdir, capsys, request):
     try:
         env_path = tmpdir.join(request.node.name)

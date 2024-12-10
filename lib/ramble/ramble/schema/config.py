@@ -103,6 +103,19 @@ properties["config"]["spack"] = {
             },
             "additionalProperties": False,
         },
+        "env_view": {
+            "type": "object",
+            "default": {
+                "link_type": "symlink",
+            },
+            "properties": {
+                "link_type": {
+                    "type": "string",
+                    "default": "symlink",
+                },
+            },
+            "additionalProperties": False,
+        },
     },
     "additionalProperties": False,
 }
