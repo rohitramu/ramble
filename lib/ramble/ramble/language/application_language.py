@@ -297,7 +297,7 @@ def environment_variable(
             if workload_group not in app.workload_group_env_vars:
                 app.workload_group_env_vars[workload_group] = []
 
-            app.workload_group_vars[workload_group].append(workload_env_var.copy())
+            app.workload_group_env_vars[workload_group].append(workload_env_var.copy())
 
             for wl_name in workload_group_list:
                 app.workloads[wl_name].add_environment_variable(workload_env_var.copy())
