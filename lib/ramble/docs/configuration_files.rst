@@ -176,11 +176,34 @@ The current default configuration is as follows:
           flags: ''
         global
           flags: ''
+        env_view:
+          link_type: 'symlink'
       input_cache: '$ramble/var/ramble/cache'
       workspace_dirs: '$ramble/var/ramble/workspaces'
       upload:
         type: 'BigQuery'
         uri: ''
+
+
+.. _spack-config-option:
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Spack
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``spack`` config options within the config configuration section can be used to
+customize Spack's behavior. The ``install``, ``concretize``, ``buildcache``,
+and ``env_create`` sections can be used to customize the flags passed to these
+Spack commands (with ``env_create`` being equivalent to ``spack env create``).
+
+The ``global`` section is used to define flags that should be passed to
+``spack`` directly, as in:
+``spack {flags} {subcommand}...``
+
+The ``env_view`` section is used to customize the `spack environment views
+<https://spack.readthedocs.io/en/latest/environments.html#environment-views>`_
+that Ramble creates. Currently, the only accepted option within this section is
+``link_type`` which can take any value supported via Spack.
 
 .. _upload-config-option:
 

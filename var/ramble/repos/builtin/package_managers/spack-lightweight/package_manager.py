@@ -1001,6 +1001,14 @@ class SpackRunner(CommandRunner):
         env_file[spack_namespace]["concretizer"] = syaml.syaml_dict()
         env_file[spack_namespace]["concretizer"]["unify"] = True
 
+        link_type = ramble.config.get("config:spack:env_view:link_type")
+        env_file[spack_namespace]["view"] = syaml.syaml_dict()
+        env_file[spack_namespace]["view"]["default"] = syaml.syaml_dict()
+        env_file[spack_namespace]["view"]["default"]["root"] = os.path.join(
+            self.env_path, "ramble"
+        )
+        env_file[spack_namespace]["view"]["default"]["link_type"] = link_type
+
         env_file[spack_namespace]["specs"] = syaml.syaml_list()
         # Ensure the specs content are consistently sorted.
         # Otherwise the hash checking may artificially miss due to ordering.

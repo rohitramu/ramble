@@ -33,3 +33,5 @@ config:
       flags: ''
     env_create:
       flags: ''
+    env_view:
+      link_type: symlink
