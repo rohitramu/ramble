@@ -43,133 +43,128 @@ class NvidiaHpl(HplBase):
 
     workload_group("standard", workloads=["standard"], mode="append")
     workload_group("calculator", workloads=["calculator"], mode="append")
+    workload_group("all_workloads", workloads=["standard", "calculator"])
 
     workload_variable(
         "nvshmem_disable_cuda_vmm",
         default="1",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "NVSHMEM_DISABLE_CUDA_VMM",
         "{nvshmem_disable_cuda_vmm}",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "hpl_fct_comm_policy",
         default="1",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "HPL_FCT_COMM_POLICY",
         "{hpl_fct_comm_policy}",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "hpl_use_nvshmem",
         default="0",
         description="Whether to use NVSHMEM or not",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "HPL_USE_NVSHMEM",
         "{hpl_use_nvshmem}",
         description="Whether or not to use NVSHMEM",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "hpl_p2p_as_bcast",
         default="0",
         description="0 = ncclBcast, 1 = ncclSend/Recv",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "HPL_P2P_AS_BCAST",
         "{hpl_p2p_as_bcast}",
         description="Whether or not to use P2P for BCAST",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "pmix_mca_gds",
         default="^ds12",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "PMIX_MCA_gds",
         "{pmix_mca_gds}",
         description="PMIX MCA gds",
-        workloads=["standard", "calculator"],
-    )
-
-    workload_variable(
-        "hpl_fct_comm_policy",
-        default="1",
-        description="",
-        workloads=["standard", "calculator"],
-    )
-    environment_variable(
-        "HPL_FCT_COMM_POLICY",
-        "{hpl_fct_comm_policy}",
-        description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "ompi_mca_btl",
         default="^vader,tcp,openib,uct",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "OMPI_MCA_btl",
         "{ompi_mca_btl}",
         description="OpenMPI MCA btl",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "ompi_mca_pml",
         default="ucx",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "OMPI_MCA_pml",
         "{ompi_mca_pml}",
         description="OpenMPI MCA pml",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "ucx_net_devices",
         default="enp6s0,enp12s0,enp134s0,enp140s0",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "UCX_NET_DEVICES",
         "{ucx_net_devices}",
         description="UCX Net Devices",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "ucx_max_rndv_rails",
         default="4",
         description="",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
     )
     environment_variable(
         "UCX_MAX_RNDV_RAILS",
         "{ucx_max_rndv_rails}",
         description="UCX MAximum RNDV Rails",
-        workloads=["standard", "calculator"],
+        workload_group="all_workloads",
+    )
+
+    workload_variable(
+        "block_size",
+        default="1024",
+        description="Size of each block",
+        workload_group="calculator",
     )
