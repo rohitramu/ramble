@@ -30,177 +30,175 @@ class Hpl(ExecutableApplication):
 
     workload_variable(
         "output_file",
-        default=pad_value("HPL.out", "output file name (if any)"),
+        default="HPL.out",
         description="Output file name (if any)",
         workload_group="standard",
     )
     workload_variable(
         "device_out",
-        default=pad_value("6", "device out (6=stdout,7=stderr,file)"),
+        default="6",
         description="Output device",
         workload_group="standard",
     )
     workload_variable(
         "N-Ns",
-        default=pad_value("4", "Number of problems sizes (N)"),
+        default="4",
         description="Number of problems sizes",
         workload_group="standard",
     )
     workload_variable(
         "Ns",
-        default=pad_value("29 30 34 35", "Ns"),
+        default="29 30 34 35",
         description="Problem sizes",
         workload_group="standard",
     )
     workload_variable(
         "N-NBs",
-        default=pad_value("4", "Number of NBs"),
+        default="4",
         description="Number of NBs",
         workload_group="standard",
     )
     workload_variable(
         "NBs",
-        default=pad_value("1 2 3 4", "NBs"),
+        default="1 2 3 4",
         description="NB values",
         workload_group="standard",
     )
     workload_variable(
         "PMAP",
-        default=pad_value("0", "PMAP process mapping (0=Row-,1=Column-major)"),
+        default="0",
         description="PMAP Process mapping. (0=Row-, 1=Column-Major)",
         workload_group="standard",
     )
     workload_variable(
         "N-Grids",
-        default=pad_value("3", "Number of process grids (P x Q)"),
+        default="3",
         description="Number of process grids (P x Q)",
         workload_group="standard",
     )
     workload_variable(
         "Ps",
-        default=pad_value("2 1 4", "Ps"),
+        default="2 1 4",
         description="P values",
         workload_group="standard",
     )
     workload_variable(
         "Qs",
-        default=pad_value("2 4 1", "Qs"),
+        default="2 4 1",
         description="Q values",
         workload_group="standard",
     )
     workload_variable(
         "threshold",
-        default=pad_value("16.0", "threshold"),
+        default="16.0",
         description="Residual threshold",
         workload_group="standard",
     )
     workload_variable(
         "NPFACTs",
-        default=pad_value("3", "Number of PFACTs, panel fact"),
+        default="3",
         description="Number of PFACTs",
         workload_group="standard",
     )
     workload_variable(
         "PFACTs",
-        default=pad_value("0 1 2", "PFACTs (0=left, 1=Crout, 2=Right)"),
+        default="0 1 2",
         description="PFACT Values",
         workload_group="standard",
     )
     workload_variable(
         "N-NBMINs",
-        default=pad_value(
-            "2", "Number of NBMINs, recursive stopping criteria"
-        ),
+        default="2",
         description="Number of NBMINs",
         workload_group="standard",
     )
     workload_variable(
         "NBMINs",
-        default=pad_value("2 4", "NBMINs (>= 1)"),
+        default="2 4",
         description="NBMIN values",
         workload_group="standard",
     )
     workload_variable(
         "N-NDIVs",
-        default=pad_value("1", "Number of NDIVs, panels in recursion"),
+        default="1",
         description="Number of NDIVs",
         workload_group="standard",
     )
     workload_variable(
         "NDIVs",
-        default=pad_value("2", "NDIVs"),
+        default="2",
         description="NDIV values",
         workload_group="standard",
     )
     workload_variable(
         "N-RFACTs",
-        default=pad_value("3", "Number of RFACTs, recursive panel fact."),
+        default="3",
         description="Number of RFACTs",
         workload_group="standard",
     )
     workload_variable(
         "RFACTs",
-        default=pad_value("0 1 2", "RFACTs (0=left, 1=Crout, 2=Right)"),
+        default="0 1 2",
         description="RFACT values",
         workload_group="standard",
     )
     workload_variable(
         "N-BCASTs",
-        default=pad_value("1", "Number of BCASTs, broadcast"),
+        default="1",
         description="Number of BCASTs",
         workload_group="standard",
     )
     workload_variable(
         "BCASTs",
-        default=pad_value("0", "BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM)"),
+        default="0",
         description="BCAST values",
         workload_group="standard",
     )
     workload_variable(
         "N-DEPTHs",
-        default=pad_value("1", "Number of DEPTHs, lookahead depth"),
+        default="1",
         description="Number of DEPTHs",
         workload_group="standard",
     )
     workload_variable(
         "DEPTHs",
-        default=pad_value("0", "DEPTHs (>=0)"),
+        default="0",
         description="DEPTH values",
         workload_group="standard",
     )
     workload_variable(
         "SWAP",
-        default=pad_value("2", "SWAP (0=bin-exch,1=long,2=mix)"),
+        default="2",
         description="Swapping algorithm",
         workload_group="standard",
     )
     workload_variable(
         "swapping_threshold",
-        default=pad_value("64", "swapping threshold"),
+        default="64",
         description="Swapping threshold",
         workload_group="standard",
     )
     workload_variable(
         "L1",
-        default=pad_value("0", "L1 in (0=transposed,1=no-transposed) form"),
+        default="0",
         description="Storage for upper triangular portion of columns",
         workload_group="standard",
     )
     workload_variable(
         "U",
-        default=pad_value("0", "U  in (0=transposed,1=no-transposed) form"),
+        default="0",
         description="Storage for the rows of U",
         workload_group="standard",
     )
     workload_variable(
         "Equilibration",
-        default=pad_value("1", "Equilibration (0=no,1=yes)"),
+        default="1",
         description="Determines if equilibration should be enabled or disabled.",
         workload_group="standard",
     )
     workload_variable(
         "mem_alignment",
-        default=pad_value("8", "memory alignment in double (> 0)"),
+        default="8",
         description="Sets the alignment in doubles for memory addresses",
         workload_group="standard",
     )
@@ -293,6 +291,42 @@ class Hpl(ExecutableApplication):
         output_format="N-NB-P-Q = {N}-{NB}-{P}-{Q}",
     )
 
+    # ( setting_name, setting_description )
+    hpl_settings = [
+        ("output_file", "output file name (if any)"),
+        ("device_out", "(FORTRAN) device out (6=stdout,7=stderr,file)"),
+        ("N-Ns", "Number of problem sizes (N)"),
+        ("Ns", "Ns, Problem Sizes"),
+        ("N-NBs", "Number of NBs"),
+        ("NBs", "NBs, Block sizes"),
+        ("PMAP", "PMAP process mapping (0=Row-,1=Column-major)"),
+        ("N-Grids", "Number of Grids, process grids (P x Q)"),
+        ("Ps", "Ps, Dimension 1 parallelization"),
+        ("Qs", "Qs, Dimension 2 parallelization"),
+        ("threshold", "threshold"),
+        ("NPFACTs", "Number of PFACTs, panel fact"),
+        ("PFACTs", "PFACT Values (0=left, 1=Crout, 2=Right)"),
+        ("N-NBMINs", "Number of NBMINs, recursive stopping criteria"),
+        ("NBMINs", "NBMINs (>= 1)"),
+        ("N-NDIVs", "Number of NDIVs, panels in recursion"),
+        ("NDIVs", "NDIVs"),
+        ("N-RFACTs", "Number of RFACTS, recursive panel fact."),
+        ("RFACTs", "RFACTs (0=left, 1=Crout, 2=Right)"),
+        ("N-BCASTs", "Number of BCASTs, broadcast"),
+        (
+            "BCASTs",
+            "BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM,6=MKL BPUSH,7=AMD Hybrid Panel)",
+        ),
+        ("N-DEPTHs", "Number of DEPTHs, lookahead depth"),
+        ("DEPTHs", "DEPTHs (>=0)"),
+        ("SWAP", "SWAP (0=bin-exch,1=long,2=mix)"),
+        ("swapping_threshold", "swapping_threshold"),
+        ("L1", "L1 in (0=transposed,1=no-transposed) form"),
+        ("U", "U  in (0=transposed,1=no-transposed) form"),
+        ("Equilibration", "Equilibration (0=no,1=yes)"),
+        ("mem_alignment", "memory alignment in double (> 0)"),
+    ]
+
     # Integer sqrt
     def _isqrt(self, n):
         if n < 0:
@@ -309,6 +343,7 @@ class Hpl(ExecutableApplication):
 
     def _calculate_values(self, workspace):
         expander = self.expander
+        calculated_settings = {}
         if expander.workload_name == "calculator":
             # Find the best P and Q whose product is the number of available
             # cores, with P less than Q
@@ -354,78 +389,43 @@ class Hpl(ExecutableApplication):
             usedPercentage = int(problemSize**2 / fullMemWords * 100)
 
             for name, var in self.workloads["standard"].variables.items():
-                self.variables[var.name] = var.default
+                if var.name not in self.variables:
+                    self.define_variable(var.name, var.default)
 
-            pfact = expander.expand_var_name("pfact")
-            nbmin = expander.expand_var_name("nbmin")
-            rfact = expander.expand_var_name("rfact")
-            bcast = expander.expand_var_name("bcast")
-            depth = expander.expand_var_name("depth")
+            # Key = Variable name
+            #      Value: Value to override variable with
+            #      Comment: Comment to append to variable comment
+            calculated_settings = {
+                "N-Ns": {"value": 1},
+                "Ns": {
+                    "value": int(problemSize),
+                    "comment": f"(= {usedPercentage}% of total available memory)",
+                },
+                "N-NBs": {"value": 1},
+                "NBs": {"value": blockSize},
+                "Ps": {"value": int(bestP)},
+                "Qs": {"value": int(bestQ)},
+                "N-Grids": {"value": 1},
+            }
 
-            self.variables["N-Ns"] = pad_value(
-                "1", "Number of problems sizes (N)"
-            )  # vs 4
+        # Handle applying overrides, and apply comments to variable definitions.
+        # If workload is calculator, `calculated_settings` is defined
+        # If workload is standard, `calculated_settings` is empty
+        for setting, comment in self.hpl_settings:
+            pad_comment = ""
+            if comment is not None:
+                pad_comment = comment
+            value = self.expander.expand_var_name(setting)
 
-            # Calculated:
-            self.variables["Ns"] = pad_value(
-                int(problemSize),
-                f"Ns (= {usedPercentage}% of total available memory)",
-            )
+            if setting in calculated_settings:
+                if "value" in calculated_settings[setting]:
+                    value = calculated_settings[setting]["value"]
+                if "comment" in calculated_settings[setting]:
+                    pad_comment += (
+                        " " + calculated_settings[setting]["comment"]
+                    )
 
-            self.variables["N-NBs"] = pad_value("1", "Number of NBs")  # vs 4
-
-            # Calculated:
-            self.variables["NBs"] = pad_value(
-                blockSize, "NBs"
-            )  # calculated, vs 4 samples
-
-            self.variables["N-Grids"] = pad_value(
-                "1", "Number of Grids, process grids (P x Q)"
-            )  # vs 3
-
-            # Calculated:
-            self.variables["Ps"] = pad_value(int(bestP), "Ps")
-
-            # Calculated:
-            self.variables["Qs"] = pad_value(int(bestQ), "Qs")
-
-            self.variables["NPFACTs"] = pad_value(
-                "1", "Number of PFACTs, panel fact"
-            )  # vs 3
-
-            # ramble.yaml configurable
-            self.variables["PFACTs"] = pad_value(
-                pfact, "PFACT Values (0=left, 1=Crout, 2=Right)"
-            )  # vs 0 1 2
-
-            self.variables["N-NBMINs"] = pad_value(
-                "1", "Number of NBMINs, recursive stopping criteria"
-            )  # vs 2
-
-            # ramble.yaml configurable
-            self.variables["NBMINs"] = pad_value(
-                nbmin, "NBMINs (>= 1)"
-            )  # vs '2 4'
-
-            self.variables["N-RFACTs"] = pad_value(
-                "1", "Number of RFACTS, recursive panel fact."
-            )  # vs '3'
-
-            # ramble.yaml configurable
-            self.variables["RFACTs"] = pad_value(
-                rfact, "RFACTs (0=left, 1=Crout, 2=Right)"
-            )  # vs '0 1 2'
-
-            # ramble.yaml configurable
-            self.variables["BCASTs"] = pad_value(
-                bcast,
-                "BCASTs (0=1rg,1=1rM,2=2rg,3=2rM,4=Lng,5=LnM,6=MKL BPUSH,7=AMD Hybrid Panel)",
-            )  # vs '0'
-
-            # ramble.yaml configurable
-            self.variables["DEPTHs"] = pad_value(
-                depth, "DEPTHs (>=0)"
-            )  # vs '0'
+            self.define_variable(setting, pad_value(value, pad_comment))
 
     def _make_experiments(self, workspace, app_inst=None):
         super()._make_experiments(workspace)
