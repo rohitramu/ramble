@@ -717,7 +717,7 @@ class Expander:
         elif isinstance(node, ast.Call):
             return self._eval_function_call(node)
         elif isinstance(node, ast.Subscript):
-            return self._eval_susbscript_op(node)
+            return self._eval_subscript_op(node)
         else:
             node_type = str(type(node))
             raise MathEvaluationError(
@@ -906,24 +906,50 @@ class Expander:
         except KeyError:
             raise SyntaxError("Unsupported unary operator")
 
-    def _eval_susbscript_op(self, node):
+    def _eval_subscript_op(self, node):
         """Evaluate subscript operation in the ast"""
         try:
             operand = self.eval_math(node.value)
             slice_node = node.slice
-            if not isinstance(operand, str) or not isinstance(slice_node, ast.Slice):
-                raise SyntaxError("Currently only string slicing is supported for subscript")
 
-            def _get_with_default(s_node, attr, default):
-                v_node = getattr(s_node, attr)
-                if v_node is None:
-                    return default
-                return self.eval_math(v_node)
+            if isinstance(operand, str):
+                if isinstance(slice_node, ast.Slice):
 
-            lower = _get_with_default(slice_node, "lower", 0)
-            upper = _get_with_default(slice_node, "upper", len(operand))
-            step = _get_with_default(slice_node, "step", 1)
-            return operand[slice(lower, upper, step)]
+                    def _get_with_default(s_node, attr, default):
+                        v_node = getattr(s_node, attr)
+                        if v_node is None:
+                            return default
+                        return self.eval_math(v_node)
+
+                    lower = _get_with_default(slice_node, "lower", 0)
+                    upper = _get_with_default(slice_node, "upper", len(operand))
+                    step = _get_with_default(slice_node, "step", 1)
+                    return operand[slice(lower, upper, step)]
+                elif operand in self._variables and isinstance(self._variables[operand], dict):
+                    op_dict = self.expand_var_name(operand, typed=True)
+
+                    key = None
+                    # TODO: Remove after support for python 3.9 is dropped
+                    # DEPRECATED: ast.Index was dropped in python 3.9
+                    if hasattr(ast, "Index") and isinstance(slice_node, ast.Index):
+                        key = self.eval_math(slice_node.value)
+                    elif isinstance(slice_node, ast.Constant) or _safe_str_node_check(slice_node):
+                        key = self.eval_math(slice_node)
+
+                    if key is None:
+                        raise SyntaxError(
+                            "During dictionary extraction, key is None. Skipping extraction."
+                        )
+
+                    if key not in op_dict:
+                        raise SyntaxError(
+                            f"Key {key} is not in dictionary {operand}. Cannot extract value."
+                        )
+                    return op_dict[key]
+            raise SyntaxError(
+                "Currently subscripts are only support "
+                "for string slicing, and key extraction from dictionaries"
+            )
         except TypeError:
             raise SyntaxError("Unsupported operand type in subscript operator")
 
