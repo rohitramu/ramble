@@ -176,9 +176,13 @@ Supported functions are:
 * ``randint`` (from `random.randint`)
 * ``re_search(regex, str)`` (determine if ``str`` contains pattern ``regex``, based on ``re.search``)
 
-Additionally, string slicing is supported:
+String slicing is supported:
 
 * ``str[start:end:step]`` (string slicing)
+
+Dictionary references are supported:
+
+* ``dict_name["key"]`` (dictionary subscript)
 
 .. _ramble-escaped-variables:
 
