@@ -334,6 +334,8 @@ class Expander:
     Additionally, math will be evaluated as part of expansion.
     """
 
+    _ast_dbg_prefix = "EXPANDER AST:"
+
     def __init__(self, variables, experiment_set, no_expand_vars=set()):
 
         self._keywords = ramble.keywords.keywords
@@ -735,6 +737,15 @@ class Expander:
             f"Syntax error while processing {node_type} node:\n" + f"{node.__dict__}"
         )
 
+    def __dbg_syntax_error(self, msg, node):
+        node_type = str(type(node))
+        raise SyntaxError(
+            self._ast_dbg_prefix
+            + f" {msg}\n"
+            + f"Occurred while processing {node_type} node:\n"
+            + f"{node.__dict__}"
+        )
+
     def _ast_num(self, node):
         """Handle a number node in the ast"""
         return node.n
@@ -795,9 +806,9 @@ class Expander:
             return result
 
         except TypeError:
-            raise SyntaxError("Unsupported operand type in boolean operator")
+            self.__dbg_syntax_error("Unsupported operand type in boolean operator", node)
         except KeyError:
-            raise SyntaxError("Unsupported boolean operator")
+            self.__dbg_syntax_error("Unsupported boolean operator", node)
 
     def _eval_comparisons(self, node):
         """Handle a comparison node in the ast"""
@@ -832,9 +843,9 @@ class Expander:
                     cur_left = cur_right
             return result
         except TypeError:
-            raise SyntaxError("Unsupported operand type in binary comparison operator")
+            self.__dbg_syntax_error("Unsupported operand type in binary comparison operator", node)
         except KeyError:
-            raise SyntaxError("Unsupported binary comparison operator")
+            self.__dbg_syntax_error("Unsupported binary comparison operator", node)
 
     def _eval_comp_in(self, node):
         """Handle in node in the ast
@@ -887,12 +898,12 @@ class Expander:
             right_eval = self.eval_math(node.right)
             op = supported_math_operators[type(node.op)]
             if isinstance(left_eval, str) or isinstance(right_eval, str):
-                raise SyntaxError("Unsupported operand type in binary operator")
+                self.__dbg_syntax_error("Unsupported operand type in binary operator", node)
             return op(left_eval, right_eval)
         except TypeError:
-            raise SyntaxError("Unsupported operand type in binary operator")
+            self.__dbg_syntax_error("Unsupported operand type in binary operator", node)
         except KeyError:
-            raise SyntaxError("Unsupported binary operator")
+            self.__dbg_syntax_error("Unsupported binary operator", node)
 
     def _eval_unary_ops(self, node):
         """Evaluate unary operators in the ast
@@ -902,13 +913,13 @@ class Expander:
         try:
             operand = self.eval_math(node.operand)
             if isinstance(operand, str):
-                raise SyntaxError("Unsupported operand type in unary operator")
+                self.__dbg_syntax_error("Unsupported operand type in unary operator", node)
             op = supported_math_operators[type(node.op)]
             return op(operand)
         except TypeError:
-            raise SyntaxError("Unsupported operand type in unary operator")
+            self.__dbg_syntax_error("Unsupported operand type in unary operator", node)
         except KeyError:
-            raise SyntaxError("Unsupported unary operator")
+            self.__dbg_syntax_error("Unsupported unary operator", node)
 
     def _eval_subscript_op(self, node):
         """Evaluate subscript operation in the ast"""
@@ -944,21 +955,24 @@ class Expander:
                         msg = (
                             "During dictionary extraction, key is None. " + "Skipping extraction."
                         )
-                        raise SyntaxError(msg)
+                        self.__dbg_syntax_error(msg, node)
 
                     if key not in op_dict:
                         msg = (
                             f"Key {key} is not in dictionary {operand}. " + "Cannot extract value."
                         )
-                        raise SyntaxError(msg)
+                        self.__dbg_syntax_error(msg, node)
 
                     return op_dict[key]
-            raise SyntaxError(
+
+            msg = (
                 "Currently subscripts are only support "
-                "for string slicing, and key extraction from dictionaries"
+                + "for string slicing, and key extraction from dictionaries"
             )
+            self.__dbg_syntax_error(msg, node)
         except TypeError:
-            raise SyntaxError("Unsupported operand type in subscript operator")
+            msg = "Unsupported operand type in subscript operator"
+            self.__dbg_syntax_error(msg, node)
 
 
 def raise_passthrough_error(in_str, out_str):
