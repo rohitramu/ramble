@@ -693,36 +693,40 @@ class Expander:
         Some operators will generate floating point, while
         others will generate integers (if the inputs are integers).
         """
-        if isinstance(node, ast.Num):
-            return self._ast_num(node)
-        elif isinstance(node, ast.Constant):
-            return self._ast_constant(node)
-        elif isinstance(node, ast.Name):
-            return self._ast_name(node)
-        # TODO: Remove when we drop support for 3.6
-        # DEPRECATED: Remove due to python 3.8
-        # See: https://docs.python.org/3/library/ast.html#node-classes
-        elif isinstance(node, ast.Str):
-            return node.s
-        elif isinstance(node, ast.Attribute):
-            return self._ast_attr(node)
-        elif isinstance(node, ast.Compare):
-            return self._eval_comparisons(node)
-        elif isinstance(node, ast.BoolOp):
-            return self._eval_bool_op(node)
-        elif isinstance(node, ast.BinOp):
-            return self._eval_binary_ops(node)
-        elif isinstance(node, ast.UnaryOp):
-            return self._eval_unary_ops(node)
-        elif isinstance(node, ast.Call):
-            return self._eval_function_call(node)
-        elif isinstance(node, ast.Subscript):
-            return self._eval_subscript_op(node)
-        else:
-            node_type = str(type(node))
-            raise MathEvaluationError(
-                f"Unsupported math AST node {node_type}:\n" + f"\t{node.__dict__}"
-            )
+        try:
+            if isinstance(node, ast.Num):
+                return self._ast_num(node)
+            elif isinstance(node, ast.Constant):
+                return self._ast_constant(node)
+            elif isinstance(node, ast.Name):
+                return self._ast_name(node)
+            # TODO: Remove when we drop support for 3.6
+            # DEPRECATED: Remove due to python 3.8
+            # See: https://docs.python.org/3/library/ast.html#node-classes
+            elif isinstance(node, ast.Str):
+                return node.s
+            elif isinstance(node, ast.Attribute):
+                return self._ast_attr(node)
+            elif isinstance(node, ast.Compare):
+                return self._eval_comparisons(node)
+            elif isinstance(node, ast.BoolOp):
+                return self._eval_bool_op(node)
+            elif isinstance(node, ast.BinOp):
+                return self._eval_binary_ops(node)
+            elif isinstance(node, ast.UnaryOp):
+                return self._eval_unary_ops(node)
+            elif isinstance(node, ast.Call):
+                return self._eval_function_call(node)
+            elif isinstance(node, ast.Subscript):
+                return self._eval_subscript_op(node)
+            else:
+                node_type = str(type(node))
+                raise MathEvaluationError(
+                    f"Unsupported math AST node {node_type}:\n" + f"\t{node.__dict__}"
+                )
+        except SyntaxError as e:
+            logger.debug(str(e))
+            raise e
 
     # Ast logic helper methods
     def __raise_syntax_error(self, node):
@@ -937,14 +941,17 @@ class Expander:
                         key = self.eval_math(slice_node)
 
                     if key is None:
-                        raise SyntaxError(
-                            "During dictionary extraction, key is None. Skipping extraction."
+                        msg = (
+                            "During dictionary extraction, key is None. " + "Skipping extraction."
                         )
+                        raise SyntaxError(msg)
 
                     if key not in op_dict:
-                        raise SyntaxError(
-                            f"Key {key} is not in dictionary {operand}. Cannot extract value."
+                        msg = (
+                            f"Key {key} is not in dictionary {operand}. " + "Cannot extract value."
                         )
+                        raise SyntaxError(msg)
+
                     return op_dict[key]
             raise SyntaxError(
                 "Currently subscripts are only support "
