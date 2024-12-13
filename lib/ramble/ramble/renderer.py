@@ -158,6 +158,14 @@ class Renderer:
         object_variables = {}
         expander = ramble.expander.Expander(variables, None)
 
+        # Convert all dict types to base dicts
+        # This allows the expander to properly return typed dicts.
+        # Without this, all dicts are ruamel.CommentedMaps, and these
+        # cannot be evaled using ast.literal_eval
+        for var, val in variables.items():
+            if isinstance(val, dict):
+                variables[var] = dict(val)
+
         # Expand all variables that generate lists
         for name, unexpanded in variables.items():
             value = expander.expand_lists(unexpanded)

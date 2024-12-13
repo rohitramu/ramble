@@ -32,6 +32,7 @@ def exp_dict():
         "size": '"0000.96"',  # Escaped as a string
         "test_mask": '"0x0"',
         "max_len": 9,
+        "test_dict": {"test_key1": "test_val1", "test_key2": "test_val2"},
     }
 
 
@@ -85,6 +86,11 @@ def exp_dict():
         ('"{env_name}"[:{max_len}:1]', "spack_foo", set(), 1),
         ("not_a_slice[0]", "not_a_slice[0]", set(), 1),
         ("not_a_valid_slice[0:a]", "not_a_valid_slice[0:a]", set(), 1),
+        ("{test_dict}", "{'test_key1': 'test_val1', 'test_key2': 'test_val2'}", set(), 1),
+        ("{test_dict['test_key1']}", "test_val1", set(), 1),
+        ("{test_dict['test_key2']}", "test_val2", set(), 1),
+        ("{test_dict['missing_key']}", "{test_dict['missing_key']}", set(), 1),
+        ("{test_dict[None]}", "{test_dict[None]}", set(), 1),
     ],
 )
 def test_expansions(input, output, no_expand_vars, passes):
