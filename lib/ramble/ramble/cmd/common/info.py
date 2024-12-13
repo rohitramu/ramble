@@ -16,6 +16,7 @@ import ramble.cmd.common.arguments as arguments
 import ramble.repository
 
 from ramble.util.logger import logger
+from ramble.workload import WorkloadVariable
 
 import enum
 
@@ -240,9 +241,14 @@ def print_single_attribute(obj, attr, verbose=False, pattern="*", format=support
                     color_name = ramble.util.colors.section_title(name)
                     color.cprint(f"{color_name}:")
                     for sub_name, sub_val in val.items():
-                        color_sub_name = ramble.util.colors.nested_1(sub_name)
+                        # Avoid showing duplicate names for variables
+                        if isinstance(sub_val, WorkloadVariable) and sub_name == sub_val.name:
+                            to_print = f"{indentation}{sub_val}"
+                        else:
+                            color_sub_name = ramble.util.colors.nested_1(sub_name)
+                            to_print = f"{indentation}{color_sub_name}: {sub_val}"
                         try:
-                            color.cprint(f"{indentation}{color_sub_name}: {sub_val}")
+                            color.cprint(to_print)
                         except color.ColorParseError:
                             escaped_sub_val = sub_val.replace("@", "@@")
                             color.cprint(f"{indentation}{color_sub_name}: {escaped_sub_val}")
