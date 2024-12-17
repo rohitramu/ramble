@@ -8,7 +8,6 @@
 
 import os
 from ramble.appkit import *
-from ramble.expander import Expander
 
 import math
 
@@ -262,14 +261,8 @@ class Hpl(ExecutableApplication):
     )
 
     # FOMs:
-    log_str = os.path.join(
-        Expander.expansion_str("experiment_run_dir"),
-        Expander.expansion_str("experiment_name") + ".out",
-    )
-
     figure_of_merit(
         "Time",
-        log_file=log_str,
         fom_regex=r".*\s+(?P<N>[0-9]+)\s+(?P<NB>[0-9]+)\s+(?P<P>[0-9]+)\s+(?P<Q>[0-9]+)\s+(?P<time>[0-9]+\.[0-9]+)\s+(?P<gflops>[0-9].*)\n",
         group_name="time",
         units="s",
@@ -278,7 +271,6 @@ class Hpl(ExecutableApplication):
 
     figure_of_merit(
         "GFlops",
-        log_file=log_str,
         fom_regex=r".*\s+(?P<N>[0-9]+)\s+(?P<NB>[0-9]+)\s+(?P<P>[0-9]+)\s+(?P<Q>[0-9]+)\s+(?P<time>[0-9]+\.[0-9]+)\s+(?P<gflops>[0-9].*)\n",
         group_name="gflops",
         units="GFLOP/s",
@@ -289,6 +281,39 @@ class Hpl(ExecutableApplication):
         "problem-name",
         regex=r".*\s+(?P<N>[0-9]+)\s+(?P<NB>[0-9]+)\s+(?P<P>[0-9]+)\s+(?P<Q>[0-9]+)\s+(?P<time>[0-9]+\.[0-9]+)\s+(?P<gflops>[0-9].*)\n",
         output_format="N-NB-P-Q = {N}-{NB}-{P}-{Q}",
+    )
+
+    # MxP FOMs
+    gflops_regex = (
+        r"\s+GFLOPS = (?P<gflops>\S+), per GPU =\s+(?P<per_gflops>\S+)"
+    )
+    lu_gflops_regex = (
+        r"\s+LU GFLOPS = (?P<gflops>\S+), per GPU =\s+(?P<per_gflops>\S+)"
+    )
+    figure_of_merit(
+        "Total GFLOPs",
+        fom_regex=gflops_regex,
+        group_name="gflops",
+        units="GFLOPs",
+    )
+    figure_of_merit(
+        "Per GPU GFLOPs",
+        fom_regex=gflops_regex,
+        group_name="per_gflops",
+        units="GFLOPs",
+    )
+
+    figure_of_merit(
+        "Total LU GFLOPs",
+        fom_regex=lu_gflops_regex,
+        group_name="gflops",
+        units="GFLOPs",
+    )
+    figure_of_merit(
+        "Per GPU LU GFLOPs",
+        fom_regex=lu_gflops_regex,
+        group_name="per_gflops",
+        units="GFLOPs",
     )
 
     # ( setting_name, setting_description )
@@ -341,10 +366,14 @@ class Hpl(ExecutableApplication):
             else:
                 return hi
 
-    def _calculate_values(self, workspace):
+    register_phase(
+        "calculate_values", pipeline="setup", run_before=["make_experiments"]
+    )
+
+    def _calculate_values(self, workspace, app_inst):
         expander = self.expander
         calculated_settings = {}
-        if expander.workload_name == "calculator":
+        if "calculator" in expander.workload_name:
             # Find the best P and Q whose product is the number of available
             # cores, with P less than Q
             nNodes = int(expander.expand_var_name("n_nodes"))
@@ -425,11 +454,13 @@ class Hpl(ExecutableApplication):
                         " " + calculated_settings[setting]["comment"]
                     )
 
-            self.define_variable(setting, pad_value(value, pad_comment))
+            if "mxp" in self.expander.workload_name:
+                self.define_variable(setting, value)
+            else:
+                self.define_variable(setting, pad_value(value, pad_comment))
 
     def _make_experiments(self, workspace, app_inst=None):
         super()._make_experiments(workspace)
-        self._calculate_values(workspace)
 
         input_path = os.path.join(
             self.expander.expand_var_name("experiment_run_dir"), "HPL.dat"
