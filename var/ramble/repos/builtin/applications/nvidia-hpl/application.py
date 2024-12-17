@@ -38,12 +38,29 @@ class NvidiaHpl(HplBase):
         "execute", "./hpl.sh --dat {experiment_run_dir}/HPL.dat", use_mpi=True
     )
 
+    executable(
+        "execute-mxp",
+        './hpl-mxp.sh --gpu-affinity "{gpu_affinity}" --n {Ns} --nb {block_size} --nprow {Ps} --npcol {Qs} --nporder {nporder}',
+        use_mpi=True,
+    )
+
     workload("standard", executables=["execute"])
     workload("calculator", executables=["execute"])
 
-    workload_group("standard", workloads=["standard"], mode="append")
-    workload_group("calculator", workloads=["calculator"], mode="append")
-    workload_group("all_workloads", workloads=["standard", "calculator"])
+    workload("standard-mxp", executables=["execute-mxp"])
+    workload("calculator-mxp", executables=["execute-mxp"])
+
+    workload_group(
+        "standard", workloads=["standard", "standard-mxp"], mode="append"
+    )
+    workload_group(
+        "calculator", workloads=["calculator", "calculator-mxp"], mode="append"
+    )
+    workload_group(
+        "all_workloads",
+        workloads=["standard", "standard-mxp", "calculator", "calculator-mxp"],
+    )
+    workload_group("mxp", workloads=["standard-mxp", "calculator-mxp"])
 
     workload_variable(
         "nvshmem_disable_cuda_vmm",
@@ -167,4 +184,19 @@ class NvidiaHpl(HplBase):
         default="1024",
         description="Size of each block",
         workload_group="calculator",
+    )
+
+    workload_variable(
+        "nporder",
+        default="row",
+        description="Major order to use for matrix",
+        values=["row", "column"],
+        workload_group="mxp",
+    )
+
+    workload_variable(
+        "gpu_affinity",
+        default="0:1:2:3:4:5:6:7",
+        description="Colon delimited list of GPU IDs",
+        workload_group="mxp",
     )
