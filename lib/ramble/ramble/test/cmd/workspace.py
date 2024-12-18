@@ -866,10 +866,18 @@ def test_edit_edits_correct_paths():
     ws.write()
 
     config_file = ramble.workspace.config_file(ws.root)
+    applications_file = ramble.workspace.applications_file(ws.root)
+    modifiers_file = ramble.workspace.modifiers_file(ws.root)
+    software_file = ramble.workspace.software_file(ws.root)
     default_template_path = ws.template_path("execute_experiment")
 
     ws_args = ["-w", "test"]
     assert workspace("edit", "-c", "--print-file", global_args=ws_args).strip() == config_file
+    assert (
+        workspace("edit", "-a", "--print-file", global_args=ws_args).strip() == applications_file
+    )
+    assert workspace("edit", "-m", "--print-file", global_args=ws_args).strip() == modifiers_file
+    assert workspace("edit", "-s", "--print-file", global_args=ws_args).strip() == software_file
     assert (
         workspace("edit", "-t", "--print-file", global_args=ws_args).strip()
         == default_template_path
