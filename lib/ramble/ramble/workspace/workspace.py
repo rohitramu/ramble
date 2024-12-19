@@ -292,6 +292,18 @@ def licenses_file(path):
     return get_yaml_filepath(path, licenses_file_name)
 
 
+def all_config_files(path):
+    """Returns path to all yaml files in workspace config directory"""
+    config_files = []
+
+    config_path = os.path.join(path, workspace_config_path)
+    for f in os.listdir(config_path):
+        if f.endswith(".yaml"):
+            config_files.append(os.path.join(config_path, f))
+
+    return config_files
+
+
 def template_path(ws_path, requested_template_name):
     """Returns the path to a workspace's template file"""
     config_path = os.path.join(ws_path, workspace_config_path)

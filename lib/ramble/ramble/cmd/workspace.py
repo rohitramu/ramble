@@ -894,6 +894,14 @@ def workspace_edit_setup_parser(subparser):
     )
 
     subparser.add_argument(
+        "--all",
+        dest="all_files",
+        action="store_true",
+        help="Open all yaml and template files in workspace config directory",
+        required=False,
+    )
+
+    subparser.add_argument(
         "-p", "--print-file", action="store_true", help="print the file name that would be edited"
     )
 
@@ -935,6 +943,8 @@ def workspace_edit(args):
     elif args.license_only:
         licenses_file = [ramble.workspace.licenses_file(ramble_ws)]
         edit_files = licenses_file
+    elif args.all_files:
+        edit_files = ramble.workspace.all_config_files(ramble_ws) + template_files
 
     if args.print_file:
         for f in edit_files:
