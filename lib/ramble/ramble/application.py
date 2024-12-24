@@ -70,6 +70,8 @@ experiment_status = Enum(
 
 _NULL_CONTEXT = "null"
 
+_DEFAULT_CONTENT_PERM = stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH
+
 
 def _get_context_display_name(context):
     return (
@@ -1173,6 +1175,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
             self._set_input_path()
 
             self._derive_variables_for_template_path(workspace)
+            self._define_object_template_vars()
             self._vars_are_expanded = True
 
     def _inputs_and_fetchers(self, workload=None):
@@ -1376,7 +1379,9 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     f.write(
                         self.expander.expand_var(template_conf["contents"], extra_vars=exec_vars)
                     )
-                os.chmod(expand_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
+                os.chmod(expand_path, _DEFAULT_CONTENT_PERM)
+
+            self._render_object_templates(exec_vars)
 
             experiment_script = workspace.experiments_script
             experiment_script.write(self.expander.expand_var("{batch_submit}\n"))
@@ -2266,6 +2271,46 @@ class ApplicationBase(metaclass=ApplicationMeta):
         """
 
         return True
+
+    def _object_templates(self):
+        """Return templates defined from different objects associated with the app_inst"""
+
+        def _get_template_config(obj, tpl_config):
+            src_path = os.path.join(os.path.dirname(obj._file_path), tpl_config["src_name"])
+            if not os.path.isfile(src_path):
+                raise ApplicationError(f"Object {obj.name} is missing template file at {src_path}")
+            return {**tpl_config, "src_path": src_path}
+
+        for tpl_config in self.templates.values():
+            yield _get_template_config(self, tpl_config)
+        for mod in self._modifier_instances:
+            for tpl_config in mod.templates.values():
+                yield _get_template_config(mod, tpl_config)
+        if self.package_manager is not None:
+            for tpl_config in self.package_manager.templates.values():
+                yield _get_template_config(self.package_manager, tpl_config)
+
+    def _render_object_templates(self, extra_vars):
+        run_dir = self.expander.experiment_run_dir
+        for tpl_config in self._object_templates():
+            src_path = tpl_config["src_path"]
+            with open(src_path) as f_in:
+                content = f_in.read()
+            rendered = self.expander.expand_var(content, extra_vars=extra_vars)
+            out_path = os.path.join(run_dir, tpl_config["dest_name"])
+            perm = tpl_config.get("content_perm", _DEFAULT_CONTENT_PERM)
+            with open(out_path, "w+") as f_out:
+                f_out.write(rendered)
+                f_out.write("\n")
+            os.chmod(out_path, perm)
+
+    def _define_object_template_vars(self):
+        run_dir = self.expander.experiment_run_dir
+        for tpl_config in self._object_templates():
+            var_name = tpl_config["var_name"]
+            if var_name is not None:
+                path = os.path.join(run_dir, tpl_config["dest_name"])
+                self.variables[var_name] = path
 
 
 class ApplicationError(RambleError):
