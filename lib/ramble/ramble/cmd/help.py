@@ -14,7 +14,7 @@ section = "help"
 level = "short"
 
 #
-# These are longer guides on particular aspects of RAmble. Currently there
+# These are longer guides on particular aspects of Ramble. Currently there
 # is only one on spec syntax.
 #
 spec_guide = """\
