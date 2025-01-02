@@ -49,6 +49,9 @@ licensed_files = [
     r"^share/ramble/.*\.csh$",
     r"^share/ramble/qa/run-[^/]*$",
     r"^share/ramble/bash/.*$",
+    r"^share/ramble/cloud-build/.*\.yaml$",
+    # examples
+    r"^examples/.*\.yaml$",
     # all objects
     r"^var/ramble/repos/.*/(base_)?application.py$",
     r"^var/ramble/repos/.*/(base_)?modifier.py$",
@@ -230,11 +233,16 @@ def update_copyright_year(args):
         with open(file, "w") as f:
             f.write(content)
 
-    # Update also the mit license and sphinx config file
+    # Update also the licenses and sphinx config file
     replace_text(
         os.path.join(ramble.paths.ramble_root, "LICENSE-MIT"),
         r"Copyright \(c\) \d{4}-\d{4}",
         f"Copyright (c) {strict_date_range}",
+    )
+    replace_text(
+        os.path.join(ramble.paths.ramble_root, "LICENSE-APACHE"),
+        r"Copyright \d{4}-\d{4}",
+        f"Copyright {strict_date_range}",
     )
     replace_text(
         os.path.join(ramble.paths.ramble_root, "lib", "ramble", "docs", "conf.py"),
