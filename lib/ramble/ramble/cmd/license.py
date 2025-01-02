@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -43,13 +43,16 @@ licensed_files = [
     # 2 files in external
     r"^lib/ramble/external/__init__.py$",
     r"^lib/ramble/external/ordereddict_backport.py$",
-    # shell scripts in share
+    # shell scripts in share (include the generated bash completion file)
     r"^share/ramble/.*\.sh$",
     r"^share/ramble/.*\.bash$",
     r"^share/ramble/.*\.csh$",
     r"^share/ramble/qa/run-[^/]*$",
-    # all applications
-    r"^var/ramble/repos/.*/application.py$",
+    r"^share/ramble/bash/.*$",
+    # all objects
+    r"^var/ramble/repos/.*/(base_)?application.py$",
+    r"^var/ramble/repos/.*/(base_)?modifier.py$",
+    r"^var/ramble/repos/.*/(base_)?package_manager.py$",
 ]
 
 #: licensed files that can have LGPL language in them
@@ -131,7 +134,7 @@ def _check_license(lines, path):
     # The years are hard-coded in the license header to allow them to be out-dated.
     # The `strict_copyright_date` below issues warnings as reminders for refreshing.
     license_lines = [
-        r"Copyright 2022-2024 The Ramble Authors",
+        r"Copyright 2022-2025 The Ramble Authors",
         r"Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or",
         r"https://www.apache.org/licenses/LICENSE-2.0> or the MIT license",
         r"<LICENSE-MIT or https://opensource.org/licenses/MIT>, at your",
@@ -209,10 +212,14 @@ def verify(args):
 
 def update_copyright_year(args):
     """update copyright header for the current year (utc-based) in all licensed files"""
+    patt = re.compile(r"Copyright \d{4}-\d{4}")
     for filename in _licensed_files():
         with open(filename) as lic_f:
             lines = lic_f.readlines()
-            lines[0] = re.sub(r"Copyright \d{4}-\d{4}", strict_copyright_date, lines[0])
+            for i, license_line in enumerate(lines[:license_lines]):
+                if patt.search(license_line):
+                    lines[i] = patt.sub(strict_copyright_date, license_line)
+                    break
         with open(filename, "w") as lic_f:
             lic_f.writelines(lines)
 
