@@ -14,6 +14,7 @@ from collections import defaultdict
 import ramble.paths
 from ramble.util.logger import logger
 from spack.util.executable import which
+import ramble.repository
 
 description = "list and check license headers on files in ramble"
 section = "developer"
@@ -28,35 +29,43 @@ license_lines = 9
 #: Ramble's license identifier
 apache2_mit_spdx = "(Apache-2.0 OR MIT)"
 
+
+# List out regex for object files
+def _object_file_regex_list():
+    prefix = "var/ramble/repos/.*"
+    regex_list = []
+    for obj_def in ramble.repository.type_definitions.values():
+        regex = rf'{prefix}/{obj_def["file_name"]}$'
+        regex_list.append(regex)
+    return regex_list
+
+
 #: regular expressions for licensed files.
 licensed_files = [
     # ramble scripts
-    r"^bin/ramble$",
-    r"^bin/ramble-python$",
+    r"bin/ramble$",
+    r"bin/ramble-python$",
     # all of ramble core
-    r"^lib/ramble/ramble/.*\.py$",
-    r"^lib/ramble/ramble/.*\.sh$",
-    r"^lib/ramble/llnl/.*\.py$",
+    r"lib/ramble/ramble/.*\.py$",
+    r"lib/ramble/ramble/.*\.sh$",
+    r"lib/ramble/llnl/.*\.py$",
     # rst files in documentation
-    r"^lib/ramble/docs/(?!command_index|ramble|llnl).*\.rst$",
-    r"^lib/ramble/docs/.*\.py$",
+    r"lib/ramble/docs/(?!command_index|ramble|llnl).*\.rst$",
+    r"lib/ramble/docs/.*\.py$",
     # 2 files in external
-    r"^lib/ramble/external/__init__.py$",
-    r"^lib/ramble/external/ordereddict_backport.py$",
+    r"lib/ramble/external/__init__.py$",
+    r"lib/ramble/external/ordereddict_backport.py$",
     # shell scripts in share (include the generated bash completion file)
-    r"^share/ramble/.*\.sh$",
-    r"^share/ramble/.*\.bash$",
-    r"^share/ramble/.*\.csh$",
-    r"^share/ramble/qa/run-[^/]*$",
-    r"^share/ramble/bash/.*$",
-    r"^share/ramble/cloud-build/.*\.yaml$",
+    r"share/ramble/.*\.sh$",
+    r"share/ramble/.*\.bash$",
+    r"share/ramble/.*\.csh$",
+    r"share/ramble/qa/run-[^/]*$",
+    r"share/ramble/bash/.*$",
+    r"share/ramble/cloud-build/.*\.yaml$",
     # examples
-    r"^examples/.*\.yaml$",
-    # all objects
-    r"^var/ramble/repos/.*/(base_)?application.py$",
-    r"^var/ramble/repos/.*/(base_)?modifier.py$",
-    r"^var/ramble/repos/.*/(base_)?package_manager.py$",
-]
+    r"examples/.*\.yaml$",
+] + _object_file_regex_list()
+
 
 #: licensed files that can have LGPL language in them
 #: so far, just this command -- so it can find LGPL things elsewhere
