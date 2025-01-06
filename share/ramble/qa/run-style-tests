@@ -11,7 +11,7 @@
 
 #
 # Description:
-#     Runs source code style checks on RAmble.
+#     Runs source code style checks on Ramble.
 #     See $RAMBLE_ROOT/.flake8 for a list of
 #     approved exceptions.
 #

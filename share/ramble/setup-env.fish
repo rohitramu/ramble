@@ -6,7 +6,7 @@
 
 #################################################################################
 #
-# This file is part of RAmble and sets up the ramble environment for the friendly
+# This file is part of Ramble and sets up the ramble environment for the friendly
 # interactive shell (fish). This includes module support, and it also puts ramble
 # in your path. The script also checks that at least module support exists, and
 # provides suggestions if it doesn't. Source it like this:
