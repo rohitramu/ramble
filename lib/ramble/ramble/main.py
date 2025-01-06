@@ -295,7 +295,7 @@ class RambleArgumentParser(argparse.ArgumentParser):
   ramble help --all       list all commands and options
   ramble help <command>   help on a specific command
   ramble help --spec      help on the application specification syntax
-  ramble docs             open https://ramble.rtfd.io/ in a browser
+  ramble docs             open https://ramble.readthedocs.io/ in a browser
 """.format(
                 help=section_descriptions["help"]
             )
