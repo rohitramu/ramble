@@ -175,10 +175,6 @@ class PyxisEnroot(BasicModifier):
             # Define container_mounts
             input_mounts = app_inst.expander.expand_var("{container_mounts}")
 
-            prefix = ""
-            if len(input_mounts) > 0:
-                prefix = ","
-
             exp_mount = "{experiment_run_dir}:{experiment_run_dir}"
             expanded_exp_mount = app_inst.expander.expand_var(exp_mount)
 
@@ -196,7 +192,8 @@ class PyxisEnroot(BasicModifier):
                 if add_mod:
                     self.variable_modification(
                         "container_mounts",
-                        modification=prefix + exp_mount,
+                        modification=exp_mount,
+                        separator=",",
                         method="append",
                         mode=self._usage_mode,
                     )
