@@ -36,6 +36,7 @@ obj_attribute_map = {
     "archive_patterns": None,
     "success_criteria": None,
     "target_shells": "shell_support_pattern",
+    "templates": None,
     # Application specific:
     "workloads": None,
     "workload_groups": None,

@@ -476,3 +476,38 @@ def target_shells(shell_support_pattern=None):
             obj.shell_support_pattern = shell_support_pattern
 
     return _execute_target_shells
+
+
+@shared_directive("templates")
+def register_template(
+    name: str, src_name: str, dest_name: str, define_var: bool = True, output_perm=None
+):
+    """Directive to define an object-specific template to be rendered into experiment run_dir.
+
+    For instance, `register_template(name="foo", src_name="foo.tpl", dest_name="foo.sh")`
+    expects a "foo.tpl" template defined alongside the object source, and uses that to
+    render a file under "{experiment_run_dir}/foo.sh". The rendered path can also be
+    referenced with the `foo` variable name.
+
+    Args:
+        name: The name of the template. It is also used as the variable name
+              that an experiment can use to reference the rendered path, if
+              `define_var` is true.
+        src_name: The leaf name of the template. This is used to locate the
+                  the template under the containing directory of the object.
+        dest_name: The leaf name of the rendered output under the experiment
+                   run directory.
+        define_var: Controls if a variable named `name` should be defined.
+        output_perm: The chmod mask for the rendered output file.
+    """
+
+    def _define_template(obj):
+        var_name = name if define_var else None
+        obj.templates[name] = {
+            "src_name": src_name,
+            "dest_name": dest_name,
+            "var_name": var_name,
+            "output_perm": output_perm,
+        }
+
+    return _define_template
