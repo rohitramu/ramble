@@ -2275,9 +2275,19 @@ class ApplicationBase(metaclass=ApplicationMeta):
     def _object_templates(self):
         """Return templates defined from different objects associated with the app_inst"""
 
-        def _get_template_config(obj, tpl_config):
-            src_path = os.path.join(os.path.dirname(obj._file_path), tpl_config["src_name"])
-            if not os.path.isfile(src_path):
+        def _get_template_config(
+            obj, tpl_config, obj_type=ramble.repository.ObjectTypes.applications
+        ):
+            found = False
+            # Search up the object chain
+            object_paths = [e[1] for e in ramble.repository.list_object_files(obj, obj_type)]
+            src_name = tpl_config["src_name"]
+            for obj_path in object_paths:
+                src_path = os.path.join(os.path.dirname(obj_path), src_name)
+                if os.path.isfile(src_path):
+                    found = True
+                    break
+            if not found:
                 raise ApplicationError(f"Object {obj.name} is missing template file at {src_path}")
             return {**tpl_config, "src_path": src_path}
 
@@ -2285,10 +2295,16 @@ class ApplicationBase(metaclass=ApplicationMeta):
             yield _get_template_config(self, tpl_config)
         for mod in self._modifier_instances:
             for tpl_config in mod.templates.values():
-                yield _get_template_config(mod, tpl_config)
+                yield _get_template_config(
+                    mod, tpl_config, obj_type=ramble.repository.ObjectTypes.modifiers
+                )
         if self.package_manager is not None:
             for tpl_config in self.package_manager.templates.values():
-                yield _get_template_config(self.package_manager, tpl_config)
+                yield _get_template_config(
+                    self.package_manager,
+                    tpl_config,
+                    obj_type=ramble.repository.ObjectTypes.package_managers,
+                )
 
     def _render_object_templates(self, extra_vars):
         run_dir = self.expander.experiment_run_dir
