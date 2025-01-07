@@ -7,7 +7,6 @@
 # except according to those terms.
 
 
-import os
 from ramble.appkit import *
 
 
@@ -112,17 +111,9 @@ class Hpcg(ExecutableApplication):
         units="",
     )
 
-    def _make_experiments(self, workspace, app_inst=None):
-        super()._make_experiments(workspace)
-
-        input_path = os.path.join(
-            self.expander.expand_var_name("experiment_run_dir"), "hpcg.dat"
-        )
-
-        with open(input_path, "w+") as f:
-            f.write("HPCG benchmark input file\n")
-            f.write(
-                "Sandia National Laboratories; University of Tennessee, Knoxville\n"
-            )
-            f.write(self.expander.expand_var_name("matrix_size") + "\n")
-            f.write(self.expander.expand_var_name("iterations") + "\n")
+    register_template(
+        name="hpcg_dat",
+        src_name="hpcg.dat.tpl",
+        dest_name="hpcg.dat",
+        define_var=False,
+    )
