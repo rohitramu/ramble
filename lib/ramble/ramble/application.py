@@ -2062,6 +2062,11 @@ class ApplicationBase(metaclass=ApplicationMeta):
         # Extract file paths for all criteria
         for criteria in criteria_list.all_criteria():
             log_path = self.expander.expand_var(criteria.file)
+
+            # Ensure log path is absolute. If not, prepend the experiment run directory
+            if not os.path.isabs(log_path) and self.expander.experiment_run_dir not in log_path:
+                log_path = os.path.join(self.expander.experiment_run_dir, log_path)
+
             if log_path not in files and os.path.exists(log_path):
                 files[log_path] = self._new_file_dict()
 
@@ -2093,6 +2098,10 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
         for fom, conf in fom_definitions.items():
             log_path = self.expander.expand_var(conf["log_file"])
+
+            # Ensure log path is absolute. If not, prepend the experiment run directory
+            if not os.path.isabs(log_path) and self.expander.experiment_run_dir not in log_path:
+                log_path = os.path.join(self.expander.experiment_run_dir, log_path)
 
             if log_path not in files:
                 files[log_path] = self._new_file_dict()
