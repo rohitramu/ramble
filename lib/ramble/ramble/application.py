@@ -502,6 +502,10 @@ class ApplicationBase(metaclass=ApplicationMeta):
             for var in self.package_manager.package_manager_variables.values():
                 self.variables[var.name] = var.default
 
+        if self.workflow_manager is not None:
+            for var in self.workflow_manager.wm_vars.values():
+                self.variables[var.name] = var.default
+
         ##########################################
         # Expand used variables to track all usage
         ##########################################
@@ -964,6 +968,9 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
         for mod_inst in self._modifier_instances:
             var_sets.append(mod_inst.mode_variables())
+
+        if self.workflow_manager is not None:
+            var_sets.append(self.workflow_manager.wm_vars)
 
         for var_set in var_sets:
             for var, val in var_set.items():
@@ -2317,6 +2324,13 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     self.package_manager,
                     tpl_config,
                     obj_type=ramble.repository.ObjectTypes.package_managers,
+                )
+        if self.workflow_manager is not None:
+            for tpl_config in self.workflow_manager.templates.values():
+                yield _get_template_config(
+                    self.workflow_manager,
+                    tpl_config,
+                    obj_type=ramble.repository.ObjectTypes.workflow_managers,
                 )
 
     def _render_object_templates(self, extra_vars):
