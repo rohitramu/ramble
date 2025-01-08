@@ -6,14 +6,9 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import os
 from ramble.appkit import *
 
 import math
-
-
-def pad_value(val, desc):
-    return "{:<14}".format(val) + desc
 
 
 class Hpl(ExecutableApplication):
@@ -202,6 +197,20 @@ class Hpl(ExecutableApplication):
         workload_group="standard",
     )
 
+    workload_variable(
+        "used_percent_comment",
+        default="",
+        description="Comment about used percent of memory for workload",
+        workload_group="standard",
+    )
+
+    workload_variable(
+        "used_percent_comment",
+        default="= {percent_mem}% of total available memory",
+        description="Comment about used percent of memory for workload",
+        workload_group="calculator",
+    )
+
     # calculator workload-specific variables:
 
     workload_variable(
@@ -366,6 +375,13 @@ class Hpl(ExecutableApplication):
             else:
                 return hi
 
+    register_template(
+        "hpl_dat",
+        src_name="HPL.dat.tpl",
+        dest_name="HPL.dat",
+        define_var=False,
+    )
+
     register_phase(
         "calculate_values", pipeline="setup", run_before=["make_experiments"]
     )
@@ -441,78 +457,10 @@ class Hpl(ExecutableApplication):
         # If workload is calculator, `calculated_settings` is defined
         # If workload is standard, `calculated_settings` is empty
         for setting, comment in self.hpl_settings:
-            pad_comment = ""
-            if comment is not None:
-                pad_comment = comment
             value = self.expander.expand_var_name(setting)
 
             if setting in calculated_settings:
                 if "value" in calculated_settings[setting]:
                     value = calculated_settings[setting]["value"]
-                if "comment" in calculated_settings[setting]:
-                    pad_comment += (
-                        " " + calculated_settings[setting]["comment"]
-                    )
 
-            if "mxp" in self.expander.workload_name:
-                self.define_variable(setting, value)
-            else:
-                self.define_variable(setting, pad_value(value, pad_comment))
-
-    def _make_experiments(self, workspace, app_inst=None):
-        super()._make_experiments(workspace)
-
-        input_path = os.path.join(
-            self.expander.expand_var_name("experiment_run_dir"), "HPL.dat"
-        )
-
-        settings = [
-            "output_file",
-            "device_out",
-            "N-Ns",
-            "Ns",
-            "N-NBs",
-            "NBs",
-            "PMAP",
-            "N-Grids",
-            "Ps",
-            "Qs",
-            "threshold",
-            "NPFACTs",
-            "PFACTs",
-            "N-NBMINs",
-            "NBMINs",
-            "N-NDIVs",
-            "NDIVs",
-            "N-RFACTs",
-            "RFACTs",
-            "N-BCASTs",
-            "BCASTs",
-            "N-DEPTHs",
-            "DEPTHs",
-            "SWAP",
-            "swapping_threshold",
-            "L1",
-            "U",
-            "Equilibration",
-            "mem_alignment",
-        ]
-
-        with open(input_path, "w+") as f:
-            f.write("    HPLinpack benchmark input file\n")
-            f.write(
-                "Innovative Computing Laboratory, University of Tennessee\n"
-            )
-
-            for setting in settings:
-                # This gets around an issue in expander where trailing comments
-                # after '#' are not printed
-                hash_replace_str = self.expander.expand_var_name(
-                    setting
-                ).replace("Number", "#")
-                f.write(hash_replace_str + "\n")
-
-            # Write some documentation at the bottom of the input file:
-            f.write(
-                "##### This line (no. 32) is ignored (it serves as a separator). ######"
-            )
+            self.define_variable(setting, value)
