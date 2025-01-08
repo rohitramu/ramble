@@ -181,6 +181,8 @@ class ApplicationBase(metaclass=ApplicationMeta):
         self.license_path = ""
         self.license_file = ""
 
+        self.workflow_manager = None
+
         ramble.util.directives.define_directive_methods(self)
 
     def experiment_lock(self):
@@ -236,7 +238,10 @@ class ApplicationBase(metaclass=ApplicationMeta):
                              experiment.
         """
         self.variants = variants.copy()
+        self._set_package_manager()
+        self._set_workflow_manager()
 
+    def _set_package_manager(self):
         if namespace.package_manager in self.variants:
             pkgman_name = self.expander.expand_var(
                 self.variants[namespace.package_manager], typed=True
@@ -275,6 +280,24 @@ class ApplicationBase(metaclass=ApplicationMeta):
                                 "level": ramble.keywords.output_level.variable,
                             }
                         }
+                    )
+
+    def _set_workflow_manager(self):
+        if namespace.workflow_manager in self.variants:
+            workflow_name = self.expander.expand_var(
+                self.variants[namespace.workflow_manager], typed=True
+            )
+
+            if workflow_name is not None:
+                try:
+                    wfman_type = ramble.repository.ObjectTypes.workflow_managers
+                    self.workflow_manager = ramble.repository.get(workflow_name, wfman_type).copy()
+                    self.workflow_manager.set_application(self)
+                except ramble.repository.UnknownObjectError:
+                    logger.die(
+                        f"{workflow_name} is not a valid workflow manager. "
+                        "Valid workflow managers can be listed via:\n"
+                        "\tramble list --type workflow_managers"
                     )
 
     def build_phase_order(self):

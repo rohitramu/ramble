@@ -62,9 +62,11 @@ ObjectTypes = Enum(
         "applications",
         "modifiers",
         "package_managers",
+        "workflow_managers",
         "base_applications",
         "base_modifiers",
         "base_package_managers",
+        "base_workflow_managers",
     ],
 )
 
@@ -99,6 +101,14 @@ type_definitions = {
         "accepted_configs": ["package_manager_repo.yaml", unified_config],
         "singular": "package manager",
     },
+    ObjectTypes.workflow_managers: {
+        "file_name": "workflow_manager.py",
+        "dir_name": "workflow_managers",
+        "abbrev": "wm",
+        "config_section": "workflow_manager_repos",
+        "accepted_configs": ["workflow_manager_repo.yaml", unified_config],
+        "singular": "workflow manager",
+    },
     ObjectTypes.base_applications: {
         "file_name": "base_application.py",
         "dir_name": "base_applications",
@@ -123,6 +133,14 @@ type_definitions = {
         "accepted_configs": ["base_package_manager_repo.yaml", unified_config],
         "singular": "base package manager",
     },
+    ObjectTypes.base_workflow_managers: {
+        "file_name": "base_workflow_manager.py",
+        "dir_name": "base_workflow_managers",
+        "abbrev": "base_wm",
+        "config_section": "base_workflow_manager_repos",
+        "accepted_configs": ["base_workflow_manager_repo.yaml", unified_config],
+        "singular": "base workflow manager",
+    },
 }
 
 
@@ -141,6 +159,11 @@ def _package_managers(repo_dirs=None):
     return _gen_path(repo_dirs=repo_dirs, obj_type=ObjectTypes.package_managers)
 
 
+def _workflow_managers(repo_dirs=None):
+    """Get the workflow managers singleton RepoPath instance for Ramble."""
+    return _gen_path(repo_dirs=repo_dirs, obj_type=ObjectTypes.workflow_managers)
+
+
 def _base_apps(repo_dirs=None):
     """Get the base applications singleton RepoPath instance for Ramble."""
     return _gen_path(repo_dirs=repo_dirs, obj_type=ObjectTypes.base_applications)
@@ -156,13 +179,20 @@ def _base_package_managers(repo_dirs=None):
     return _gen_path(repo_dirs=repo_dirs, obj_type=ObjectTypes.base_package_managers)
 
 
+def _base_workflow_managers(repo_dirs=None):
+    """Get the base workflow managers singleton RepoPath instance for Ramble."""
+    return _gen_path(repo_dirs=repo_dirs, obj_type=ObjectTypes.base_workflow_managers)
+
+
 paths = {
     ObjectTypes.applications: llnl.util.lang.Singleton(_apps),
     ObjectTypes.modifiers: llnl.util.lang.Singleton(_mods),
     ObjectTypes.package_managers: llnl.util.lang.Singleton(_package_managers),
+    ObjectTypes.workflow_managers: llnl.util.lang.Singleton(_workflow_managers),
     ObjectTypes.base_applications: llnl.util.lang.Singleton(_base_apps),
     ObjectTypes.base_modifiers: llnl.util.lang.Singleton(_base_mods),
     ObjectTypes.base_package_managers: llnl.util.lang.Singleton(_base_package_managers),
+    ObjectTypes.base_workflow_managers: llnl.util.lang.Singleton(_base_workflow_managers),
 }
 
 #####################################
