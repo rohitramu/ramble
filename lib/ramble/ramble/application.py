@@ -2270,7 +2270,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     break
             if not found:
                 raise ApplicationError(f"Object {obj.name} is missing template file at {src_path}")
-            return {**tpl_config, "src_path": src_path}
+            return (obj, {**tpl_config, "src_path": src_path})
 
         for tpl_config in self.templates.values():
             yield _get_template_config(self, tpl_config)
@@ -2289,10 +2289,14 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
     def _render_object_templates(self, extra_vars):
         run_dir = self.expander.experiment_run_dir
-        for tpl_config in self._object_templates():
+        for obj, tpl_config in self._object_templates():
             src_path = tpl_config["src_path"]
             with open(src_path) as f_in:
                 content = f_in.read()
+            extra_vars_func_name = tpl_config.get("extra_vars_func_name")
+            if extra_vars_func_name is not None:
+                extra_vars_func = getattr(obj, extra_vars_func_name)
+                extra_vars.update(extra_vars_func())
             rendered = self.expander.expand_var(content, extra_vars=extra_vars)
             out_path = os.path.join(run_dir, tpl_config["dest_name"])
             perm = tpl_config.get("content_perm", _DEFAULT_CONTENT_PERM)
@@ -2303,7 +2307,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
     def _define_object_template_vars(self):
         run_dir = self.expander.experiment_run_dir
-        for tpl_config in self._object_templates():
+        for _, tpl_config in self._object_templates():
             var_name = tpl_config["var_name"]
             if var_name is not None:
                 path = os.path.join(run_dir, tpl_config["dest_name"])
