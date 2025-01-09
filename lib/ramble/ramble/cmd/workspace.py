@@ -840,38 +840,20 @@ def workspace_list(args):
 def workspace_edit_setup_parser(subparser):
     """edit workspace config or template"""
     subparser.add_argument(
+        "-f",
+        "--file",
+        dest="filename",
+        default=None,
+        help="Open a single file by filename",
+        required=False,
+    )
+
+    subparser.add_argument(
         "-c",
         "--config_only",
         dest="config_only",
         action="store_true",
         help="Only open config files",
-        required=False,
-    )
-
-    subparser.add_argument(
-        "-a",
-        "--applications_only",
-        dest="applications_only",
-        action="store_true",
-        help="Only open applications files",
-        required=False,
-    )
-
-    subparser.add_argument(
-        "-m",
-        "--modifiers_only",
-        dest="modifiers_only",
-        action="store_true",
-        help="Only open modifiers files",
-        required=False,
-    )
-
-    subparser.add_argument(
-        "-s",
-        "--software_only",
-        dest="software_only",
-        action="store_true",
-        help="Only open software files",
         required=False,
     )
 
@@ -916,28 +898,15 @@ def workspace_edit(args):
         )
 
     config_file = ramble.workspace.config_file(ramble_ws)
-    applications_file = ramble.workspace.applications_file(ramble_ws)
-    modifiers_file = ramble.workspace.modifiers_file(ramble_ws)
-    software_file = ramble.workspace.software_file(ramble_ws)
     template_files = ramble.workspace.all_template_paths(ramble_ws)
 
     edit_files = [config_file]
-    optional_files = [applications_file, modifiers_file, software_file]
-
-    for file in optional_files:
-        if file and os.path.exists(file):
-            edit_files.append(file)
-
     edit_files.extend(template_files)
 
-    if args.config_only:
+    if args.filename:
+        edit_files = [ramble.workspace.get_yaml_filepath(ramble_ws, args.filename)]
+    elif args.config_only:
         edit_files = [config_file]
-    elif args.applications_only:
-        edit_files = [applications_file]
-    elif args.modifiers_only:
-        edit_files = [modifiers_file]
-    elif args.software_only:
-        edit_files = [software_file]
     elif args.template_only:
         edit_files = template_files
     elif args.license_only:

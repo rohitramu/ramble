@@ -104,9 +104,6 @@ auxiliary_software_dir_name = "auxiliary_software_files"
 config_schema = ramble.schema.workspace.schema
 config_section = "workspace"
 config_file_name = "ramble.yaml"
-applications_file_name = "applications.yaml"
-modifiers_file_name = "modifiers.yaml"
-software_file_name = "software.yaml"
 licenses_file_name = "licenses.yaml"
 
 metadata_file_name = "workspace_metadata.yaml"
@@ -270,21 +267,6 @@ def get_yaml_filepath(path, file_name):
 def config_file(path):
     """Returns the path to a workspace's ramble.yaml"""
     return get_yaml_filepath(path, config_file_name)
-
-
-def applications_file(path):
-    """Returns the path to a workspace's applications.yaml"""
-    return get_yaml_filepath(path, applications_file_name)
-
-
-def modifiers_file(path):
-    """Returns the path to a workspace's modifiers.yaml"""
-    return get_yaml_filepath(path, modifiers_file_name)
-
-
-def software_file(path):
-    """Returns the path to a workspace's software.yaml"""
-    return get_yaml_filepath(path, software_file_name)
 
 
 def licenses_file(path):
