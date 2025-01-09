@@ -65,7 +65,8 @@ from ramble.util.output_capture import output_mapper
 from enum import Enum
 
 experiment_status = Enum(
-    "experiment_status", ["UNKNOWN", "SETUP", "RUNNING", "COMPLETE", "SUCCESS", "FAILED"]
+    "experiment_status",
+    ["UNKNOWN", "SETUP", "RUNNING", "COMPLETE", "SUCCESS", "FAILED", "CANCELLED"],
 )
 
 _NULL_CONTEXT = "null"
@@ -1745,10 +1746,13 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     success = True
         success = success and criteria_list.passed()
 
-        if success:
-            self.set_status(status=experiment_status.SUCCESS)
-        else:
-            self.set_status(status=experiment_status.FAILED)
+        status = experiment_status.SUCCESS if success else experiment_status.FAILED
+        # When workflow_manager is present, only use app_status when workflow is completed.
+        if self.workflow_manager is not None:
+            wm_status = self.workflow_manager.get_status(workspace)
+            if not wm_status == experiment_status.COMPLETE:
+                status = wm_status
+        self.set_status(status)
 
         self._init_result()
 
