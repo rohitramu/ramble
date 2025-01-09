@@ -2293,6 +2293,9 @@ class ApplicationBase(metaclass=ApplicationMeta):
             src_path = tpl_config["src_path"]
             with open(src_path) as f_in:
                 content = f_in.read()
+            extra_vars_wm = tpl_config.get("extra_vars")
+            if extra_vars_wm is not None:
+                extra_vars.update(extra_vars_wm)
             extra_vars_func_name = tpl_config.get("extra_vars_func_name")
             if extra_vars_func_name is not None:
                 extra_vars_func = getattr(obj, extra_vars_func_name)

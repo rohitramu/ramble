@@ -29,6 +29,11 @@ class Template(ExecutableApplication):
         name="bar",
         src_name="bar.tpl",
         dest_name="bar.sh",
+        # The `dynamic_hello_world` will be overridden by `_bar_vars`
+        extra_vars={
+            "dynamic_var1": "foobar",
+            "dynamic_hello_world": "not_exist",
+        },
         extra_vars_func="bar_vars",
     )
 

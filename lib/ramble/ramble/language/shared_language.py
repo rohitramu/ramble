@@ -486,6 +486,7 @@ def register_template(
     src_name: str,
     dest_name: str,
     define_var: bool = True,
+    extra_vars: Optional[dict] = None,
     extra_vars_func: Optional[str] = None,
     output_perm=None,
 ):
@@ -505,8 +506,12 @@ def register_template(
         dest_name: The leaf name of the rendered output under the experiment
                    run directory.
         define_var: Controls if a variable named `name` should be defined.
+        extra_vars: If present, the variable dict is used as extra variables to
+                    render the template.
         extra_vars_func: If present, the name of the function to call to return
                          a dict of extra variables used to render the template.
+                         This option is combined together with and takes precedence
+                         over `extra_vars`, if both are present.
         output_perm: The chmod mask for the rendered output file.
     """
 
@@ -517,6 +522,7 @@ def register_template(
             "src_name": src_name,
             "dest_name": dest_name,
             "var_name": var_name,
+            "extra_vars": extra_vars,
             "extra_vars_func_name": extra_vars_func_name,
             "output_perm": output_perm,
         }
