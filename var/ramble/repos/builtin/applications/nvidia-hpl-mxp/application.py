@@ -11,7 +11,7 @@ from ramble.appkit import *
 from ramble.base_app.builtin.hpl import Hpl as HplBase
 
 
-class NvidiaHpl(HplBase):
+class NvidiaHplMxp(HplBase):
     """This application defines how to run NVIDIA's optimized version of HPL,
     which is contained in NVIDIA's HPC-Benchmarks collection.
 
@@ -28,18 +28,14 @@ class NvidiaHpl(HplBase):
     https://catalog.ngc.nvidia.com/orgs/nvidia/containers/hpc-benchmarks
     """
 
-    name = "nvidia-hpl"
+    name = "nvidia-hpl-mxp"
 
     maintainers("douglasjacobsen")
 
     tags("benchmark-app", "benchmark", "linpack", "optimized", "nvidia")
 
     executable(
-        "execute", "./hpl.sh --dat {experiment_run_dir}/HPL.dat", use_mpi=True
-    )
-
-    executable(
-        "execute-mxp",
+        "execute",
         './hpl-mxp.sh --gpu-affinity "{gpu_affinity}" --n {Ns} --nb {block_size} --nprow {Ps} --npcol {Qs} --nporder {nporder}',
         use_mpi=True,
     )
@@ -47,20 +43,12 @@ class NvidiaHpl(HplBase):
     workload("standard", executables=["execute"])
     workload("calculator", executables=["execute"])
 
-    workload("standard-mxp", executables=["execute-mxp"])
-    workload("calculator-mxp", executables=["execute-mxp"])
-
-    workload_group(
-        "standard", workloads=["standard", "standard-mxp"], mode="append"
-    )
-    workload_group(
-        "calculator", workloads=["calculator", "calculator-mxp"], mode="append"
-    )
+    workload_group("standard", workloads=["standard"], mode="append")
+    workload_group("calculator", workloads=["calculator"], mode="append")
     workload_group(
         "all_workloads",
-        workloads=["standard", "standard-mxp", "calculator", "calculator-mxp"],
+        workloads=["standard", "calculator"],
     )
-    workload_group("mxp", workloads=["standard-mxp", "calculator-mxp"])
 
     workload_variable(
         "nvshmem_disable_cuda_vmm",
@@ -191,23 +179,49 @@ class NvidiaHpl(HplBase):
         default="row",
         description="Major order to use for matrix",
         values=["row", "column"],
-        workload_group="mxp",
+        workload_group="all_workloads",
     )
 
     workload_variable(
         "gpu_affinity",
         default="0:1:2:3:4:5:6:7",
         description="Colon delimited list of GPU IDs",
-        workload_group="mxp",
+        workload_group="all_workloads",
+    )
+
+    # MxP FOMs
+    gflops_regex = (
+        r"\s+GFLOPS = (?P<gflops>\S+), per GPU =\s+(?P<per_gflops>\S+)"
+    )
+    lu_gflops_regex = (
+        r"\s+LU GFLOPS = (?P<gflops>\S+), per GPU =\s+(?P<per_gflops>\S+)"
+    )
+    figure_of_merit(
+        "Total GFlops",
+        fom_regex=gflops_regex,
+        group_name="gflops",
+        units="GFLOP/s",
+        fom_type=FomType.THROUGHPUT,
+    )
+    figure_of_merit(
+        "Per GPU GFlops",
+        fom_regex=gflops_regex,
+        group_name="per_gflops",
+        units="GFLOP/s",
+        fom_type=FomType.THROUGHPUT,
     )
 
     figure_of_merit(
-        "Per GPU GFlops",
-        fom_regex=r".*\s+(?P<N>[0-9]+)\s+(?P<NB>[0-9]+)\s+(?P<P>[0-9]+)"
-        + r"\s+(?P<Q>[0-9]+)\s+(?P<time>[0-9]+\.[0-9]+)\s+"
-        + r"(?P<gflops>\S+)\s+\(\s+(?P<per_gpu_gflops>\S+)\)",
-        group_name="per_gpu_gflops",
+        "Total LU GFlops",
+        fom_regex=lu_gflops_regex,
+        group_name="gflops",
         units="GFLOP/s",
-        contexts=["problem-name"],
+        fom_type=FomType.THROUGHPUT,
+    )
+    figure_of_merit(
+        "Per GPU LU GFlops",
+        fom_regex=lu_gflops_regex,
+        group_name="per_gflops",
+        units="GFLOP/s",
         fom_type=FomType.THROUGHPUT,
     )
