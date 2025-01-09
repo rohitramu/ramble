@@ -58,6 +58,18 @@ class Slurm(WorkflowManagerBase):
         description="hostlist variable used by various modifiers",
     )
 
+    workflow_manager_variable(
+        name="srun_args",
+        default="-n {n_ranks}",
+        description="Arguments supplied to srun",
+    )
+
+    workflow_manager_variable(
+        name="mpi_command",
+        default="srun {srun_args}",
+        description="mpirun prefix, mostly served as an overridable default",
+    )
+
     register_template(
         name="batch_submit",
         src_name="batch_submit.tpl",
