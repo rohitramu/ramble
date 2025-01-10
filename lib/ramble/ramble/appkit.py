@@ -28,6 +28,7 @@ from ramble.util.logger import logger
 from ramble.util.logger import logger as tty
 
 from ramble.util.file_util import get_file_path
+from ramble.util.foms import FomType
 
 from ramble.util.output_capture import OUTPUT_CAPTURE
 

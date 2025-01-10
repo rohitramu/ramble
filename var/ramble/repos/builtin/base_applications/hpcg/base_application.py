@@ -57,23 +57,25 @@ class Hpcg(ExecutableApplication):
 
     figure_of_merit(
         "Status",
-        fom_regex=r"Final Summary::HPCG result is (?P<status>[a-zA-Z]+) with a GFLOP/s rating of=(?P<gflops>[0-9]+\.[0-9]+)",
+        fom_regex=r"Final Summary::HPCG result is (?P<status>[a-zA-Z]+) with a GFLOP/s rating of=(?P<gflops>[0-9\.]+)",
         group_name="status",
         units="",
     )
 
     figure_of_merit(
-        "Gflops",
-        fom_regex=r"Final Summary::HPCG result is (?P<status>[a-zA-Z]+) with a GFLOP/s rating of=(?P<gflops>[0-9]+\.[0-9]+)",
+        "GFlops",
+        fom_regex=r"Final Summary::HPCG result is (?P<status>[a-zA-Z]+) with a GFLOP/s rating of=(?P<gflops>[0-9\.]+)",
         group_name="gflops",
         units="GFLOP/s",
+        fom_type=FomType.THROUGHPUT,
     )
 
     figure_of_merit(
         "Time",
-        fom_regex=r"Final Summary::Results are.* execution time.*is=(?P<exec_time>[0-9]+\.[0-9]*)",
+        fom_regex=r"Final Summary::Results are.* execution time.*is=(?P<exec_time>[0-9\.]*)",
         group_name="exec_time",
         units="s",
+        fom_type=FomType.TIME,
     )
 
     figure_of_merit(
@@ -106,9 +108,10 @@ class Hpcg(ExecutableApplication):
 
     figure_of_merit(
         "HPCG 2.4 Rating",
-        fom_regex=r"Final Summary::HPCG 2\.4 rating.*=(?P<rating>[0-9]+\.*[0-9]*)",
+        fom_regex=r"Final Summary::HPCG 2\.4 rating.*=(?P<rating>[0-9\.]+)",
         group_name="rating",
         units="",
+        fom_type=FomType.THROUGHPUT,
     )
 
     register_template(
