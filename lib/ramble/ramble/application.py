@@ -2225,10 +2225,15 @@ class ApplicationBase(metaclass=ApplicationMeta):
         def _copy_files(obj_inst, obj_type, repo_root):
             flist = ramble.repository.list_object_files(obj_inst, obj_type)
             for type_dir_name, obj_path in flist:
-                obj_dir_name = os.path.basename(os.path.dirname(obj_path))
-                obj_dir = os.path.join(repo_root, type_dir_name, obj_dir_name)
-                fs.mkdirp(obj_dir)
-                shutil.copyfile(obj_path, os.path.join(obj_dir, os.path.basename(obj_path)))
+                obj_src_dir_path = os.path.dirname(obj_path)
+                obj_dir_name = os.path.basename(obj_src_dir_path)
+                obj_dest_dir = os.path.join(repo_root, type_dir_name, obj_dir_name)
+                shutil.rmtree(obj_dest_dir, ignore_errors=True)
+                shutil.copytree(
+                    obj_src_dir_path,
+                    obj_dest_dir,
+                    ignore=shutil.ignore_patterns("*.pyc", "__pycache__"),
+                )
 
         repo_path = os.path.join(workspace.named_deployment, "object_repo")
 
@@ -2243,6 +2248,13 @@ class ApplicationBase(metaclass=ApplicationMeta):
             if self.package_manager is not None:
                 _copy_files(
                     self.package_manager, ramble.repository.ObjectTypes.package_managers, repo_path
+                )
+
+            if self.workflow_manager is not None:
+                _copy_files(
+                    self.workflow_manager,
+                    ramble.repository.ObjectTypes.workflow_managers,
+                    repo_path,
                 )
 
     register_builtin("env_vars", required=True)
