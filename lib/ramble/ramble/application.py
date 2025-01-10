@@ -66,7 +66,7 @@ from enum import Enum
 
 experiment_status = Enum(
     "experiment_status",
-    ["UNKNOWN", "SETUP", "RUNNING", "COMPLETE", "SUCCESS", "FAILED", "CANCELLED"],
+    ["UNKNOWN", "SETUP", "SUBMITTED", "RUNNING", "COMPLETE", "SUCCESS", "FAILED", "CANCELLED"],
 )
 
 _NULL_CONTEXT = "null"

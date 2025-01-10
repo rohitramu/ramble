@@ -16,7 +16,7 @@ from spack.util.executable import ProcessError
 
 # Mapping from squeue/sacct status to Ramble status
 _STATUS_MAP = {
-    "PD": "SETUP",
+    "PD": "SUBMITTED",
     "R": "RUNNING",
     "CF": "SETUP",
     "CG": "COMPLETE",
@@ -24,6 +24,14 @@ _STATUS_MAP = {
     "CANCELLED": "CANCELLED",
     "CANCELLED+": "CANCELLED",
 }
+
+
+def _declare_status_map():
+    """A utility to convert the `_STATUS_MAP` into a bash array"""
+    entries = ["declare -A status_map"]
+    for k, v in _STATUS_MAP.items():
+        entries.append(f'status_map["{k}"]="{v}"')
+    return "\n".join(entries)
 
 
 class Slurm(WorkflowManagerBase):
@@ -77,7 +85,10 @@ class Slurm(WorkflowManagerBase):
     )
 
     register_template(
-        name="batch_query", src_name="batch_query.tpl", dest_name="batch_query"
+        name="batch_query",
+        src_name="batch_query.tpl",
+        dest_name="batch_query",
+        extra_vars={"declare_status_map": _declare_status_map()},
     )
 
     register_template(
