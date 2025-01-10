@@ -69,9 +69,11 @@ import ramble.schema.variants
 import ramble.schema.repos
 import ramble.schema.modifier_repos
 import ramble.schema.package_manager_repos
+import ramble.schema.workflow_manager_repos
 import ramble.schema.base_application_repos
 import ramble.schema.base_modifier_repos
 import ramble.schema.base_package_manager_repos
+import ramble.schema.base_workflow_manager_repos
 
 from ramble.error import RambleError
 from ramble.util.logger import logger
@@ -99,9 +101,11 @@ section_schemas = {
     "repos": ramble.schema.repos.schema,
     "modifier_repos": ramble.schema.modifier_repos.schema,
     "package_manager_repos": ramble.schema.package_manager_repos.schema,
+    "workflow_manager_repos": ramble.schema.workflow_manager_repos.schema,
     "base_application_repos": ramble.schema.base_application_repos.schema,
     "base_modifier_repos": ramble.schema.base_modifier_repos.schema,
     "base_package_manager_repos": ramble.schema.base_package_manager_repos.schema,
+    "base_workflow_manager_repos": ramble.schema.base_workflow_manager_repos.schema,
 }
 
 # Same as above, but including keys for workspaces

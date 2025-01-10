@@ -94,6 +94,13 @@ pattern_exemptions = {
         "F403": [r"^from ramble.pkgmankit import \*$"],
         **common_object_exemptions,
     },
+    # exemptions applied only to workflow_manager.py files.
+    r"workflow_manager.py$": {
+        # Allow 'from ramble.modkit import *' in workflow_managers,
+        # but no other wildcards
+        "F403": [r"^from ramble.wmkit import \*$"],
+        **common_object_exemptions,
+    },
     # exemptions applied to all files.
     r".py$": {
         "E501": [

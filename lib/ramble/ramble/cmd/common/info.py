@@ -55,6 +55,8 @@ obj_attribute_map = {
     "package_manager_requirements": None,
     # Package manager specific:
     "package_manager_variables": None,
+    # Workflow manager specific:
+    "workflow_manager_variables": "wm_vars",
 }
 
 

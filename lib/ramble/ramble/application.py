@@ -65,7 +65,8 @@ from ramble.util.output_capture import output_mapper
 from enum import Enum
 
 experiment_status = Enum(
-    "experiment_status", ["UNKNOWN", "SETUP", "RUNNING", "COMPLETE", "SUCCESS", "FAILED"]
+    "experiment_status",
+    ["UNKNOWN", "SETUP", "SUBMITTED", "RUNNING", "COMPLETE", "SUCCESS", "FAILED", "CANCELLED"],
 )
 
 _NULL_CONTEXT = "null"
@@ -181,6 +182,8 @@ class ApplicationBase(metaclass=ApplicationMeta):
         self.license_path = ""
         self.license_file = ""
 
+        self.workflow_manager = None
+
         ramble.util.directives.define_directive_methods(self)
 
     def experiment_lock(self):
@@ -236,7 +239,10 @@ class ApplicationBase(metaclass=ApplicationMeta):
                              experiment.
         """
         self.variants = variants.copy()
+        self._set_package_manager()
+        self._set_workflow_manager()
 
+    def _set_package_manager(self):
         if namespace.package_manager in self.variants:
             pkgman_name = self.expander.expand_var(
                 self.variants[namespace.package_manager], typed=True
@@ -275,6 +281,24 @@ class ApplicationBase(metaclass=ApplicationMeta):
                                 "level": ramble.keywords.output_level.variable,
                             }
                         }
+                    )
+
+    def _set_workflow_manager(self):
+        if namespace.workflow_manager in self.variants:
+            workflow_name = self.expander.expand_var(
+                self.variants[namespace.workflow_manager], typed=True
+            )
+
+            if workflow_name is not None:
+                try:
+                    wfman_type = ramble.repository.ObjectTypes.workflow_managers
+                    self.workflow_manager = ramble.repository.get(workflow_name, wfman_type).copy()
+                    self.workflow_manager.set_application(self)
+                except ramble.repository.UnknownObjectError:
+                    logger.die(
+                        f"{workflow_name} is not a valid workflow manager. "
+                        "Valid workflow managers can be listed via:\n"
+                        "\tramble list --type workflow_managers"
                     )
 
     def build_phase_order(self):
@@ -477,6 +501,10 @@ class ApplicationBase(metaclass=ApplicationMeta):
         if self.package_manager is not None:
             # Add package manager variable defaults as placeholder
             for var in self.package_manager.package_manager_variables.values():
+                self.variables[var.name] = var.default
+
+        if self.workflow_manager is not None:
+            for var in self.workflow_manager.wm_vars.values():
                 self.variables[var.name] = var.default
 
         ##########################################
@@ -941,6 +969,9 @@ class ApplicationBase(metaclass=ApplicationMeta):
 
         for mod_inst in self._modifier_instances:
             var_sets.append(mod_inst.mode_variables())
+
+        if self.workflow_manager is not None:
+            var_sets.append(self.workflow_manager.wm_vars)
 
         for var_set in var_sets:
             for var, val in var_set.items():
@@ -1715,10 +1746,13 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     success = True
         success = success and criteria_list.passed()
 
-        if success:
-            self.set_status(status=experiment_status.SUCCESS)
-        else:
-            self.set_status(status=experiment_status.FAILED)
+        status = experiment_status.SUCCESS if success else experiment_status.FAILED
+        # When workflow_manager is present, only use app_status when workflow is completed.
+        if self.workflow_manager is not None:
+            wm_status = self.workflow_manager.get_status(workspace)
+            if not wm_status == experiment_status.COMPLETE:
+                status = wm_status
+        self.set_status(status)
 
         self._init_result()
 
@@ -2294,6 +2328,13 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     self.package_manager,
                     tpl_config,
                     obj_type=ramble.repository.ObjectTypes.package_managers,
+                )
+        if self.workflow_manager is not None:
+            for tpl_config in self.workflow_manager.templates.values():
+                yield _get_template_config(
+                    self.workflow_manager,
+                    tpl_config,
+                    obj_type=ramble.repository.ObjectTypes.workflow_managers,
                 )
 
     def _render_object_templates(self, extra_vars):
