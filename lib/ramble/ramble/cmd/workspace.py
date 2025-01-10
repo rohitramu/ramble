@@ -25,6 +25,7 @@ import ramble.cmd.common.arguments as arguments
 import ramble.config
 import ramble.workspace
 import ramble.workspace.shell
+import ramble.expander
 import ramble.experiment_set
 import ramble.context
 import ramble.pipeline
@@ -904,7 +905,15 @@ def workspace_edit(args):
     edit_files.extend(template_files)
 
     if args.filename:
-        edit_files = [ramble.workspace.get_yaml_filepath(ramble_ws, args.filename)]
+        expander = ramble.expander.Expander(
+            ramble.workspace.Workspace.get_workspace_paths(ramble_ws), None
+        )
+        # If filename contains expansion strings, edit expanded path. Else assume configs dir.
+        expanded_filename = expander.expand_var(args.filename)
+        if expanded_filename != args.filename:
+            edit_files = [expanded_filename]
+        else:
+            edit_files = [ramble.workspace.get_filepath(ramble_ws, expanded_filename)]
     elif args.config_only:
         edit_files = [config_file]
     elif args.template_only:

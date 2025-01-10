@@ -258,7 +258,7 @@ def active(name):
     return _active_workspace and name == _active_workspace.name
 
 
-def get_yaml_filepath(path, file_name):
+def get_filepath(path, file_name):
     if is_workspace_dir(path):
         return os.path.join(path, workspace_config_path, file_name)
     return None
@@ -266,12 +266,12 @@ def get_yaml_filepath(path, file_name):
 
 def config_file(path):
     """Returns the path to a workspace's ramble.yaml"""
-    return get_yaml_filepath(path, config_file_name)
+    return get_filepath(path, config_file_name)
 
 
 def licenses_file(path):
     """Returns the path to a workspace's licenses.yaml"""
-    return get_yaml_filepath(path, licenses_file_name)
+    return get_filepath(path, licenses_file_name)
 
 
 def all_config_files(path):
@@ -1859,21 +1859,28 @@ ramble:
         """Iterator over each file in $workspace/configs/auxiliary_software_files"""
         yield from self._auxiliary_software_files.items()
 
+    @classmethod
+    def get_workspace_paths(cls, root):
+        """Construct dictionary of path replacements for workspace"""
+        workspace_path_replacements = {
+            "workspace_root": root,
+            "workspace": root,
+            "workspace_configs": os.path.join(root, workspace_config_path),
+            "workspace_software": os.path.join(root, workspace_software_path),
+            "workspace_logs": os.path.join(root, workspace_log_path),
+            "workspace_inputs": os.path.join(root, workspace_input_path),
+            "workspace_experiments": os.path.join(root, workspace_experiment_path),
+            "workspace_shared": os.path.join(root, workspace_shared_path),
+            "workspace_archives": os.path.join(root, workspace_archive_path),
+            "workspace_deployments": os.path.join(root, workspace_deployments_path),
+        }
+
+        return workspace_path_replacements
+
     def workspace_paths(self):
         """Dictionary of path replacements for workspace"""
         if not hasattr(self, "_workspace_path_replacements"):
-            self._workspace_path_replacements = {
-                "workspace_root": self.root,
-                "workspace": self.root,
-                "workspace_configs": self.config_dir,
-                "workspace_software": self.software_dir,
-                "workspace_logs": self.log_dir,
-                "workspace_inputs": self.input_dir,
-                "workspace_experiments": self.experiment_dir,
-                "workspace_shared": self.shared_dir,
-                "workspace_archives": self.archive_dir,
-                "workspace_deployments": self.deployments_dir,
-            }
+            self._workspace_path_replacements = self.get_workspace_paths(self.root)
 
         return self._workspace_path_replacements
 
