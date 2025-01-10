@@ -50,7 +50,9 @@ ramble:
     assert os.path.isfile(script_path)
     with open(script_path) as f:
         content = f.read()
+        assert "echo foobar" in content
         assert "echo hello santa" in content
+        assert "echo not_exist" not in content
     execute_path = os.path.join(run_dir, "execute_experiment")
     with open(execute_path) as f:
         content = f.read()

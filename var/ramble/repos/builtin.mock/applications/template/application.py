@@ -25,15 +25,19 @@ class Template(ExecutableApplication):
         workload="test_template",
     )
 
-    register_phase(
-        "ingest_dynamic_variables",
-        pipeline="setup",
-        run_before=["make_experiments"],
+    register_template(
+        name="bar",
+        src_name="bar.tpl",
+        dest_name="bar.sh",
+        # The `dynamic_hello_world` will be overridden by `_bar_vars`
+        extra_vars={
+            "dynamic_var1": "foobar",
+            "dynamic_hello_world": "not_exist",
+        },
+        extra_vars_func="bar_vars",
     )
 
-    def _ingest_dynamic_variables(self, workspace, app_inst):
+    def _bar_vars(self):
         expander = self.expander
         val = expander.expand_var('"hello {hello_name}"')
-        self.define_variable("dynamic_hello_world", val)
-
-    register_template("bar", src_name="bar.tpl", dest_name="bar.sh")
+        return {"dynamic_hello_world": val}
