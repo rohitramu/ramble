@@ -907,15 +907,11 @@ class ApplicationBase(metaclass=ApplicationMeta):
         if namespace.executables in self.internals:
             exec_order = self.internals[namespace.executables]
 
-        builtin_objects = [self]
-        all_builtins = [self.builtins]
-        for mod_inst in self._modifier_instances:
-            builtin_objects.append(mod_inst)
-            all_builtins.append(mod_inst.builtins)
-
-        if self.package_manager is not None:
-            builtin_objects.append(self.package_manager)
-            all_builtins.append(self.package_manager.builtins)
+        builtin_objects = []
+        all_builtins = []
+        for _, obj in self._objects():
+            builtin_objects.append(obj)
+            all_builtins.append(obj.builtins)
 
         all_executables = self.executables.copy()
         all_executables.update(self.custom_executables)
@@ -2240,22 +2236,8 @@ class ApplicationBase(metaclass=ApplicationMeta):
         repo_lock = lk.Lock(os.path.join(repo_path, ".ramble-obj-repo.lock"))
 
         with lk.WriteTransaction(repo_lock):
-            _copy_files(self, ramble.repository.ObjectTypes.applications, repo_path)
-
-            for mod_inst in self._modifier_instances:
-                _copy_files(mod_inst, ramble.repository.ObjectTypes.modifiers, repo_path)
-
-            if self.package_manager is not None:
-                _copy_files(
-                    self.package_manager, ramble.repository.ObjectTypes.package_managers, repo_path
-                )
-
-            if self.workflow_manager is not None:
-                _copy_files(
-                    self.workflow_manager,
-                    ramble.repository.ObjectTypes.workflow_managers,
-                    repo_path,
-                )
+            for obj_type, obj in self._objects():
+                _copy_files(obj, obj_type, repo_path)
 
     register_builtin("env_vars", required=True)
 
@@ -2311,9 +2293,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
     def _object_templates(self):
         """Return templates defined from different objects associated with the app_inst"""
 
-        def _get_template_config(
-            obj, tpl_config, obj_type=ramble.repository.ObjectTypes.applications
-        ):
+        def _get_template_config(obj, tpl_config, obj_type):
             found = False
             # Search up the object chain
             object_paths = [e[1] for e in ramble.repository.list_object_files(obj, obj_type)]
@@ -2327,27 +2307,9 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 raise ApplicationError(f"Object {obj.name} is missing template file at {src_path}")
             return (obj, {**tpl_config, "src_path": src_path})
 
-        for tpl_config in self.templates.values():
-            yield _get_template_config(self, tpl_config)
-        for mod in self._modifier_instances:
-            for tpl_config in mod.templates.values():
-                yield _get_template_config(
-                    mod, tpl_config, obj_type=ramble.repository.ObjectTypes.modifiers
-                )
-        if self.package_manager is not None:
-            for tpl_config in self.package_manager.templates.values():
-                yield _get_template_config(
-                    self.package_manager,
-                    tpl_config,
-                    obj_type=ramble.repository.ObjectTypes.package_managers,
-                )
-        if self.workflow_manager is not None:
-            for tpl_config in self.workflow_manager.templates.values():
-                yield _get_template_config(
-                    self.workflow_manager,
-                    tpl_config,
-                    obj_type=ramble.repository.ObjectTypes.workflow_managers,
-                )
+        for obj_type, obj in self._objects():
+            for tpl_conf in obj.templates.values():
+                yield _get_template_config(obj, tpl_conf, obj_type=obj_type)
 
     def _render_object_templates(self, extra_vars):
         run_dir = self.expander.experiment_run_dir
@@ -2377,6 +2339,23 @@ class ApplicationBase(metaclass=ApplicationMeta):
             if var_name is not None:
                 path = os.path.join(run_dir, tpl_config["dest_name"])
                 self.variables[var_name] = path
+
+    def _objects(self):
+        """Return a tuple for each object instance associated with the app_inst.
+
+        The tuple format is (obj_type, obj_inst). This is used to iterate over
+        all associated objects with the given app_inst.
+        """
+        yield (ramble.repository.ObjectTypes.applications, self)
+
+        for mod_inst in self._modifier_instances:
+            yield (ramble.repository.ObjectTypes.modifiers, mod_inst)
+
+        if self.package_manager is not None:
+            yield (ramble.repository.ObjectTypes.package_managers, self.package_manager)
+
+        if self.workflow_manager is not None:
+            yield (ramble.repository.ObjectTypes.workflow_managers, self.workflow_manager)
 
 
 class ApplicationError(RambleError):
