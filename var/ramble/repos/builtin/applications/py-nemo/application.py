@@ -381,7 +381,7 @@ class PyNemo(ExecutableApplication):
     )
 
     per_epoch_regex = (
-        r"Epoch (?P<epoch_id>[0-9]+):\s+:\s+(?P<pct_complete>[0-9]+)%.*\s+"
+        r"Epoch (?P<epoch_id>[0-9]+)(:\s+)+(?P<pct_complete>[0-9]+)%.*\s+"
         + r"(?P<step_idx>[0-9]+)/(?P<max_itr>[0-9]+) \[(?P<elapsed_time>[0-9:]+)<"
         + r"(?P<remaining_time>[0-9:]+).*"
     )
