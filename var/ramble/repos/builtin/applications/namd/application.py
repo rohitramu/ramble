@@ -388,7 +388,7 @@ class Namd(ExecutableApplication):
         dpns = None
 
         if os.path.isfile(log_path):
-            with open(log_path, "r") as f:
+            with open(log_path) as f:
                 for line in f.readlines():
                     match = ns_regex.match(line)
                     if match:

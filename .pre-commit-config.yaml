@@ -17,5 +17,5 @@ repos:
   - id: pyupgrade
     name: python-old-syntax-check
     args: [--py36-plus]
-    files: lib/ramble/ramble/.*\.py$
+    files: (lib/ramble/ramble/|var/ramble/repos/).*\.py$
 

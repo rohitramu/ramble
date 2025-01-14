@@ -308,7 +308,7 @@ class PyxisEnroot(BasicModifier):
             )
 
             if os.path.exists(hash_file_path):
-                with open(hash_file_path, "r") as f:
+                with open(hash_file_path) as f:
                     container_hash = f.read()
 
             else:

@@ -220,7 +220,7 @@ class SpackStack(ExecutableApplication):
         if not os.path.isfile(spack_file):
             return False
 
-        with open(spack_file, "r") as f:
+        with open(spack_file) as f:
             spack_data = syaml.load_config(f)
 
         tty.debug(f"Spack data: {spack_data}")
