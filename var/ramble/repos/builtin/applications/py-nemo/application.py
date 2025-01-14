@@ -615,7 +615,7 @@ class PyNemo(ExecutableApplication):
         final_regex = re.compile(self.final_epoch_regex)
 
         if os.path.exists(log_file):
-            with open(log_file, "r", encoding="ISO-8859-1") as f:
+            with open(log_file, encoding="ISO-8859-1") as f:
                 data = f.read()
 
             processed_log = self.expander.expand_var(

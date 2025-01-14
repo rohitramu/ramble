@@ -61,7 +61,7 @@ class SpackLightweight(PackageManagerBase):
 
         cache_tupl = ("spack-compilers", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -114,7 +114,7 @@ class SpackLightweight(PackageManagerBase):
 
         cache_tupl = ("spack-env", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -222,7 +222,7 @@ class SpackLightweight(PackageManagerBase):
 
         cache_tupl = ("concretize-env", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -273,7 +273,7 @@ class SpackLightweight(PackageManagerBase):
 
         cache_tupl = ("spack-mirror", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -334,7 +334,7 @@ class SpackLightweight(PackageManagerBase):
         env_path = self.app_inst.expander.env_path
         cache_tupl = ("push-to-cache", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already pushed, skipping".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already pushed, skipping")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -1039,7 +1039,7 @@ class SpackRunner(CommandRunner):
                 env_data = syaml.load_config(
                     syaml.dump_config(env_file, default_flow_style=False)
                 )
-                with open(spack_env_file, "r") as f:
+                with open(spack_env_file) as f:
                     existing_data = syaml.load_config(f)
                 gen_env_hash = ramble.util.hashing.hash_json(env_data)
                 existing_env_hash = ramble.util.hashing.hash_json(

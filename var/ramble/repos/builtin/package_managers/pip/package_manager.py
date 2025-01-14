@@ -362,7 +362,7 @@ class PipRunner(CommandRunner):
             existing_req_mtime = os.path.getmtime(req_file)
             existing_lock_mtime = os.path.getmtime(lock_file)
             if existing_lock_mtime >= existing_req_mtime:
-                with open(req_file, "r") as f:
+                with open(req_file) as f:
                     if f.read() == contents:
                         self.installed = True
                         logger.debug("requirement file already up-to-date")
@@ -428,7 +428,7 @@ class PipRunner(CommandRunner):
         if not lock_file:
             raise RunnerError(f"Lock file {lock_file} is missing")
         pkgs = []
-        with open(lock_file, "r") as f:
+        with open(lock_file) as f:
             for line in f.readlines():
                 # pip freeze generates such a comment, which serves as a divider
                 # for packages that are added as deps of the ones defined directly.

@@ -42,7 +42,7 @@ class Spack(SpackLightweight):
 
         cache_tupl = ("spack-install", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
