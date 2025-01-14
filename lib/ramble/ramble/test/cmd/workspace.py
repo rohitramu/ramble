@@ -867,8 +867,19 @@ def test_edit_edits_correct_paths():
 
     config_file = ramble.workspace.config_file(ws.root)
     default_template_path = ws.template_path("execute_experiment")
+    experiments_test_file = os.path.join(ws.experiment_dir, "test")
 
     ws_args = ["-w", "test"]
+    assert (
+        workspace("edit", "-f", "ramble.yaml", "--print-file", global_args=ws_args).strip()
+        == config_file
+    )
+    assert (
+        workspace(
+            "edit", "-f", "{workspace_experiments}/test", "--print-file", global_args=ws_args
+        ).strip()
+        == experiments_test_file
+    )
     assert workspace("edit", "-c", "--print-file", global_args=ws_args).strip() == config_file
     assert (
         workspace("edit", "-t", "--print-file", global_args=ws_args).strip()

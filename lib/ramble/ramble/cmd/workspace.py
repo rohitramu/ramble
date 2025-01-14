@@ -25,6 +25,7 @@ import ramble.cmd.common.arguments as arguments
 import ramble.config
 import ramble.workspace
 import ramble.workspace.shell
+import ramble.expander
 import ramble.experiment_set
 import ramble.context
 import ramble.pipeline
@@ -840,6 +841,15 @@ def workspace_list(args):
 def workspace_edit_setup_parser(subparser):
     """edit workspace config or template"""
     subparser.add_argument(
+        "-f",
+        "--file",
+        dest="filename",
+        default=None,
+        help="Open a single file by filename",
+        required=False,
+    )
+
+    subparser.add_argument(
         "-c",
         "--config_only",
         dest="config_only",
@@ -867,6 +877,14 @@ def workspace_edit_setup_parser(subparser):
     )
 
     subparser.add_argument(
+        "--all",
+        dest="all_files",
+        action="store_true",
+        help="Open all yaml and template files in workspace config directory",
+        required=False,
+    )
+
+    subparser.add_argument(
         "-p", "--print-file", action="store_true", help="print the file name that would be edited"
     )
 
@@ -883,15 +901,28 @@ def workspace_edit(args):
     config_file = ramble.workspace.config_file(ramble_ws)
     template_files = ramble.workspace.all_template_paths(ramble_ws)
 
-    edit_files = [config_file] + template_files
+    edit_files = [config_file]
+    edit_files.extend(template_files)
 
-    if args.config_only:
+    if args.filename:
+        expander = ramble.expander.Expander(
+            ramble.workspace.Workspace.get_workspace_paths(ramble_ws), None
+        )
+        # If filename contains expansion strings, edit expanded path. Else assume configs dir.
+        expanded_filename = expander.expand_var(args.filename)
+        if expanded_filename != args.filename:
+            edit_files = [expanded_filename]
+        else:
+            edit_files = [ramble.workspace.get_filepath(ramble_ws, expanded_filename)]
+    elif args.config_only:
         edit_files = [config_file]
     elif args.template_only:
         edit_files = template_files
     elif args.license_only:
         licenses_file = [ramble.workspace.licenses_file(ramble_ws)]
         edit_files = licenses_file
+    elif args.all_files:
+        edit_files = ramble.workspace.all_config_files(ramble_ws) + template_files
 
     if args.print_file:
         for f in edit_files:
