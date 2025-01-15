@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -55,7 +55,7 @@ ramble:
 
         workspace("setup", global_args=["-w", workspace_name])
         ramble_on(global_args=["-w", workspace_name])
-        workspace("analyze", "--always-print-foms", global_args=["-w", workspace_name])
+        workspace("analyze", global_args=["-w", workspace_name])
 
         with open(os.path.join(ws.root, "results.latest.txt")) as f:
             data = f.read()

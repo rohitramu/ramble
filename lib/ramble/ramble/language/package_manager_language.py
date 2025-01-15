@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -41,6 +41,8 @@ def package_manager_variable(
     """
 
     def _define_package_manager_variable(pm):
+        import ramble.workload
+
         pm.package_manager_variables[name] = ramble.workload.WorkloadVariable(
             name,
             default=default,

@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -13,12 +13,9 @@ import textwrap
 import fnmatch
 from typing import List
 
-from llnl.util.tty.colify import colified
-
-from ramble.language.modifier_language import ModifierMeta
+from ramble.language.modifier_language import ModifierMeta, mode
 from ramble.language.shared_language import SharedMeta
 from ramble.error import RambleError
-import ramble.util.colors as rucolor
 import ramble.util.directives
 import ramble.util.class_attributes
 from ramble.util.logger import logger
@@ -30,7 +27,7 @@ class ModifierBase(metaclass=ModifierMeta):
     _builtin_name = NS_SEPARATOR.join(("modifier_builtin", "{obj_name}", "{name}"))
     _mod_prefix_builtin = f"modifier_builtin{NS_SEPARATOR}"
     _language_classes = [ModifierMeta, SharedMeta]
-    _pipelines = ["analyze", "archive", "mirror", "setup", "pushtocache", "execute"]
+    _pipelines = ["analyze", "archive", "mirror", "setup", "pushtocache", "execute", "logs"]
 
     modifier_class = "ModifierBase"
 
@@ -38,6 +35,10 @@ class ModifierBase(metaclass=ModifierMeta):
     #: Do not include @ here in order not to unnecessarily ping the users.
     maintainers: List[str] = []
     tags: List[str] = []
+
+    disabled = False
+
+    mode("disabled", description="Mode to disable all modifier functionality")
 
     def __init__(self, file_path):
         super().__init__()
@@ -78,16 +79,21 @@ class ModifierBase(metaclass=ModifierMeta):
                     f"    Using default usage mode {self._usage_mode} on modifier {self.name}"
                 )
         else:
-            if len(self.modes) > 1 or len(self.modes) == 0:
+            non_disabled_modes = set(self.modes)
+            non_disabled_modes.remove("disabled")
+            if len(non_disabled_modes) > 1 or len(non_disabled_modes) == 0:
                 raise InvalidModeError(
                     "Cannot auto determine usage " f"mode for modifier {self.name}"
                 )
 
-            self._usage_mode = list(self.modes.keys())[0]
+            self._usage_mode = non_disabled_modes.pop()
             if len(logger.log_stack) >= 1:
                 logger.msg(
                     f"    Using default usage mode {self._usage_mode} on modifier {self.name}"
                 )
+
+        if self._usage_mode == "disabled":
+            self.disabled = True
 
     def set_on_executables(self, on_executables):
         """Set the executables this modifier applies to.
@@ -112,6 +118,10 @@ class ModifierBase(metaclass=ModifierMeta):
         modded_vars = self.modded_variables(app)
         self.expander._variables.update(modded_vars)
 
+    def define_variable(self, var_name, var_value):
+        """Define a variable within this modifier's expander instance"""
+        self.expander._variables[var_name] = var_value
+
     def modify_experiment(self, app):
         """Stubbed method to allow modification of experiment variables before
         an experiment is completely defined.
@@ -121,113 +131,7 @@ class ModifierBase(metaclass=ModifierMeta):
         """
         pass
 
-    def _long_print(self):
-        out_str = []
-        out_str.append(rucolor.section_title("Modifier: ") + f"{self.name}\n")
-        out_str.append("\n")
-
-        out_str.append(rucolor.section_title("Description:\n"))
-        if self.__doc__:
-            out_str.append(f"\t{self.__doc__}\n")
-        else:
-            out_str.append("\tNone\n")
-
-        if hasattr(self, "tags"):
-            out_str.append("\n")
-            out_str.append(rucolor.section_title("Tags:\n"))
-            out_str.append(colified(self.tags, tty=True))
-            out_str.append("\n")
-
-        if hasattr(self, "modes"):
-            out_str.append("\n")
-            for mode_name, wl_conf in self.modes.items():
-                out_str.append(rucolor.section_title("Mode:") + f" {mode_name}\n")
-
-                if mode_name in self.modifier_variables:
-                    out_str.append(rucolor.nested_1("\tVariables:\n"))
-                    indent = "\t\t"
-                    for var, conf in self.modifier_variables[mode_name].items():
-                        out_str.append(rucolor.nested_2(f"{indent}{var}:\n"))
-                        out_str.append(f"{indent}\tDescription: {conf.description}\n")
-                        out_str.append(f"{indent}\tDefault: {conf.default}\n")
-                        if conf.values:
-                            out_str.append(f"{indent}\tSuggested Values: {conf.values}\n")
-
-                if mode_name in self.variable_modifications:
-                    out_str.append(rucolor.nested_1("\tVariable Modifications:\n"))
-                    indent = "\t\t"
-                    for var, conf in self.variable_modifications[mode_name].items():
-                        out_str.append(rucolor.nested_2(f"{indent}{var}:\n"))
-                        out_str.append(f'{indent}\tMethod: {conf["method"]}\n')
-                        out_str.append(f'{indent}\tModification: {conf["modification"]}\n')
-
-            out_str.append("\n")
-
-        if hasattr(self, "builtins"):
-            out_str.append(rucolor.section_title("Builtin Executables:\n"))
-            out_str.append("\t" + colified(self.builtins.keys(), tty=True) + "\n")
-
-        if hasattr(self, "executable_modifiers"):
-            out_str.append(rucolor.section_title("Executable Modifiers:\n"))
-            out_str.append("\t" + colified(self.executable_modifiers.keys(), tty=True) + "\n")
-
-        if hasattr(self, "package_manager_configs"):
-            out_str.append(rucolor.section_title("Package Manager Configs:\n"))
-            for name, config in self.package_manager_configs.items():
-                out_str.append(f"\t{name} = {config}\n")
-            out_str.append("\n")
-
-        if hasattr(self, "compilers"):
-            out_str.append(rucolor.section_title("Default Compilers:\n"))
-            for comp_name, comp_def in self.compilers.items():
-                out_str.append(rucolor.nested_2(f"\t{comp_name}:\n"))
-                out_str.append(
-                    rucolor.nested_3("\t\tSpack Spec:")
-                    + f'{comp_def["pkg_spec"].replace("@", "@@")}\n'
-                )
-
-                if "compiler_spec" in comp_def and comp_def["compiler_spec"]:
-                    out_str.append(
-                        rucolor.nested_3("\t\tCompiler Spec:\n")
-                        + f'{comp_def["compiler_spec"].replace("@", "@@")}\n'
-                    )
-
-                if "compiler" in comp_def and comp_def["compiler"]:
-                    out_str.append(
-                        rucolor.nested_3("\t\tCompiler:\n") + f'{comp_def["compiler"]}\n'
-                    )
-            out_str.append("\n")
-
-        if hasattr(self, "software_specs"):
-            out_str.append(rucolor.section_title("Software Specs:\n"))
-            for spec_name, spec_def in self.software_specs.items():
-
-                out_str.append(rucolor.nested_2(f"\t{spec_name}:\n"))
-                out_str.append(
-                    rucolor.nested_3("\t\tSpack Spec:")
-                    + f'{spec_def["pkg_spec"].replace("@", "@@")}\n'
-                )
-
-                if "compiler_spec" in spec_def and spec_def["compiler_spec"]:
-                    out_str.append(
-                        rucolor.nested_3("\t\tCompiler Spec:")
-                        + f'{spec_def["compiler_spec"].replace("@", "@@")}\n'
-                    )
-
-                if "compiler" in spec_def and spec_def["compiler"]:
-                    out_str.append(rucolor.nested_3("\t\tCompiler:") + f'{spec_def["compiler"]}\n')
-            out_str.append("\n")
-
-        return out_str
-
-    def _short_print(self):
-        return [self.name]
-
     def __str__(self):
-        if self._verbosity == "long":
-            return "".join(self._long_print())
-        elif self._verbosity == "short":
-            return "".join(self._short_print())
         return self.name
 
     def format_doc(self, **kwargs):
@@ -244,7 +148,7 @@ class ModifierBase(metaclass=ModifierMeta):
             results.write((" " * indent) + line + "\n")
         return results.getvalue()
 
-    def modded_variables(self, app):
+    def modded_variables(self, app, extra_vars={}):
         mods = {}
 
         if self._usage_mode not in self.variable_modifications:
@@ -252,13 +156,22 @@ class ModifierBase(metaclass=ModifierMeta):
 
         for var, var_mod in self.variable_modifications[self._usage_mode].items():
             if var_mod["method"] in ["append", "prepend"]:
-                # var_str = app.expander.expansion_str(var)
-                # prev_val = app.expander.expand_var(var_str)
-                prev_val = app.variables[var]
+                if var in extra_vars:
+                    prev_val = extra_vars[var]
+                elif var in app.variables:
+                    prev_val = app.variables[var]
+                else:
+                    prev_val = ""
+
+                if prev_val != "" and prev_val is not None:
+                    sep = var_mod["separator"]
+                else:
+                    sep = ""
+
                 if var_mod["method"] == "append":
-                    mods[var] = f'{prev_val} {var_mod["modification"]}'
+                    mods[var] = f'{prev_val}{sep}{var_mod["modification"]}'
                 else:  # method == prepend
-                    mods[var] = f'{var_mod["modification"]} {prev_val}'
+                    mods[var] = f'{var_mod["modification"]}{sep}{prev_val}'
             else:  # method == set
                 mods[var] = var_mod["modification"]
 
@@ -349,6 +262,20 @@ class ModifierBase(metaclass=ModifierMeta):
 
                 phase_func(workspace)
 
+    def artifact_inventory(self, workspace, app_inst=None):
+        """Return an inventory of modifier artifacts
+
+        Artifact inventories are up to the individual modifier to define the
+        format of.
+
+        This will then show up in an experiment inventory.
+
+        Returns:
+            (Any) Artifact inventory for this modifier
+        """
+
+        return None
+
     def _prepare_analysis(self, workspace):
         """Hook to perform analysis that a modifier defines.
 
@@ -356,6 +283,22 @@ class ModifierBase(metaclass=ModifierMeta):
         processing to output files, before FOMs are extracted.
         """
         pass
+
+    def get_required_variables(self):
+        """Get all the required variables based on the mode."""
+        required_vars = self.required_vars
+        filtered_vars = {}
+        if required_vars:
+            mode = self._usage_mode
+            for var_name, var_props in required_vars.items():
+                modes = var_props["modes"]
+                if modes is None or mode in modes:
+                    filtered_vars[var_name] = {
+                        # Exclude the extra modes prop
+                        k: var_props[k]
+                        for k in var_props.keys() - {"modes"}
+                    }
+        return filtered_vars
 
 
 class ModifierError(RambleError):

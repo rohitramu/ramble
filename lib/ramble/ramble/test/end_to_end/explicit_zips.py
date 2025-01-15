@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -24,6 +24,7 @@ pytestmark = pytest.mark.usefixtures("mutable_config", "mutable_mock_workspace_p
 workspace = RambleCommand("workspace")
 
 
+@pytest.mark.long
 def test_wrfv4_explicit_zips(mutable_config, mutable_mock_workspace_path):
     test_config = """
 ramble:
@@ -157,10 +158,10 @@ licenses:
 
         # Test software directories
         software_dirs = ["wrfv4", "wrfv4-portable"]
-        software_base_dir = os.path.join(ws1.root, ramble.workspace.workspace_software_path)
+        software_base_dir = ws1.software_dir
         assert os.path.exists(software_base_dir)
         for software_dir in software_dirs:
-            software_path = os.path.join(software_base_dir, software_dir)
+            software_path = os.path.join(software_base_dir, "spack", software_dir)
             assert os.path.exists(software_path)
 
             spack_file = os.path.join(software_path, "spack.yaml")
@@ -168,13 +169,6 @@ licenses:
             for file in aux_software_files:
                 file_path = os.path.join(software_path, file)
                 assert os.path.exists(file_path)
-
-            # Create a mock spack.lock file
-            lock_file = os.path.join(software_path, "spack.lock")
-            with open(lock_file, "w+") as f:
-                f.write("{\n")
-                f.write('\t"test_key": "val"\n')
-                f.write("}\n")
 
         expected_experiments = [
             "scaling_1_part1_wrfv4",
@@ -258,11 +252,11 @@ licenses:
                 f.close()
 
         workspace("analyze", "-f", "text", "json", "yaml", global_args=["-w", workspace_name])
-        text_simlink_results_files = glob.glob(os.path.join(ws1.root, "results.latest.txt"))
+        text_symlink_results_files = glob.glob(os.path.join(ws1.root, "results.latest.txt"))
         text_results_files = glob.glob(os.path.join(ws1.root, "results*.txt"))
         json_results_files = glob.glob(os.path.join(ws1.root, "results*.json"))
         yaml_results_files = glob.glob(os.path.join(ws1.root, "results*.yaml"))
-        assert len(text_simlink_results_files) == 1
+        assert len(text_symlink_results_files) == 1
         assert len(text_results_files) == 2
         assert len(json_results_files) == 2
         assert len(yaml_results_files) == 2

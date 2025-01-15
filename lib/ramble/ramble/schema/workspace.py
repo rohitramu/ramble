@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -14,16 +14,9 @@
 
 from llnl.util.lang import union_dicts
 
-import spack.schema.env
 import ramble.schema.applications
 import ramble.schema.merged
 import ramble.schema.licenses
-
-env_properties = spack.schema.env.schema["patternProperties"]
-spec_properties = env_properties["^env|spack$"]
-
-applications_properties = ramble.schema.applications.properties["applications"]
-app_addProps = applications_properties["additionalProperties"]
 
 keys = ("ramble", "workspace")
 
@@ -36,11 +29,6 @@ properties = {
             ramble.schema.merged.properties,
             {
                 "include": {
-                    "type": "array",
-                    "default": [],
-                    "items": {"type": "string"},
-                },
-                "application_directories": {
                     "type": "array",
                     "default": [],
                     "items": {"type": "string"},

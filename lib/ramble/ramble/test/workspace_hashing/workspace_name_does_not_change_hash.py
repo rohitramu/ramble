@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -14,6 +14,8 @@ import ramble.workspace
 import ramble.config
 import ramble.software_environments
 from ramble.main import RambleCommand
+from ramble.namespace import namespace
+import spack.util.spack_yaml as syaml
 
 
 # everything here uses the mock_workspace_path
@@ -70,4 +72,14 @@ ramble:
             ws2._re_read()
             workspace("setup", "--dry-run", global_args=["-w", workspace2_name])
 
-            assert ws1.workspace_hash == ws2.workspace_hash
+            metadata_path = os.path.join(ws1.root, ramble.workspace.metadata_file_name)
+            with open(metadata_path) as f:
+                data = syaml.load(f)
+                ws1_hash = data[namespace.metadata]["workspace_digest"]
+
+            metadata_path = os.path.join(ws2.root, ramble.workspace.metadata_file_name)
+            with open(metadata_path) as f:
+                data = syaml.load(f)
+                ws2_hash = data[namespace.metadata]["workspace_digest"]
+
+            assert ws1_hash == ws2_hash

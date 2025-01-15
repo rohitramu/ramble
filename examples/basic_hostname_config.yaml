@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 # 
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -11,9 +11,9 @@ ramble:
     set:
       OMP_NUM_THREADS: '{n_threads}'
   variables:
-    mpi_command: 'mpirun'
+    mpi_command: mpirun
     batch_submit: '{execute_experiment}'
-    processes_per_node: -1
+    processes_per_node: 1
   applications:
     hostname:
       workloads:
@@ -21,15 +21,15 @@ ramble:
           experiments:
             test:
               variables:
-                n_ranks: '1'
-                n_nodes: '1'
+                n_ranks: 1
+                n_nodes: 1
         parallel:
           experiments:
             test:
               variables:
-                n_ranks: '2'
-                n_nodes: '1'
-                processes_per_node: '16'
+                n_ranks: 2
+                n_nodes: 1
+                processes_per_node: 16
   software:
     packages: {}
     environments: {}

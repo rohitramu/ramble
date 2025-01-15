@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -20,6 +20,8 @@ from ramble.util.logger import logger
 import ramble.util.matrices
 import ramble.util.colors as rucolor
 from ramble.package_manager import PackageManagerBase
+
+SUB_INDENT = 2
 
 
 def _get_spec(pkg_info: dict, spec_name: str, prefix: str, default=None) -> str:
@@ -53,6 +55,19 @@ class SoftwarePackage:
         self.name = name
         self.pkg_info = pkg_info
         self._package_type = "Base"
+        self._used = False
+
+    def mark_used(self):
+        """Mark this package a used"""
+        self._used = True
+
+    def is_used(self):
+        """Return if this package is used or not
+
+        Returns:
+            (bool): Whether package is used or not
+        """
+        return self._used
 
     def spec_str(self, all_packages: dict = {}, compiler=False):
         """Return a spec string for this software package
@@ -71,19 +86,28 @@ class SoftwarePackage:
 
         return ""
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """String representation of package information
 
         Args:
             indent (int): Number of spaces to indent lines with
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): String representation of this package
         """
 
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
+
         indentation = " " * indent
         color = rucolor.level_func(color_level)
+
         out_str = color(f"{indentation}{self._package_type} package: {self.name}\n")
         return out_str
 
@@ -166,24 +190,32 @@ class RenderedPackage(SoftwarePackage):
 
         return out_str
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """String representation of package information
 
         Args:
             indent (int): Number of spaces to indent lines with
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): String representation of this package
         """
 
-        indentation = " " * indent
-        out_str = super().info(indent, verbosity, color_level)
-        out_str += f'{indentation}    Spec: {self.spec.replace("@", "@@")}\n'
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
+
+        indentation = " " * (indent + SUB_INDENT)
+        out_str = super().info(indent, verbosity, color_level, only_used)
+        out_str += f'{indentation}Spec: {self.spec.replace("@", "@@")}\n'
         if self.compiler:
-            out_str += f"{indentation}    Compiler: {self.compiler}\n"
+            out_str += f"{indentation}Compiler: {self.compiler}\n"
         if self.compiler_spec:
-            out_str += f'{indentation}    Compiler Spec: {self.compiler_spec.replace("@", "@@")}\n'
+            out_str += f'{indentation}Compiler Spec: {self.compiler_spec.replace("@", "@@")}\n'
         return out_str
 
     def __eq__(self, other):
@@ -209,24 +241,63 @@ class TemplatePackage(SoftwarePackage):
         self._rendered_packages = defaultdict(dict)
         self._package_type = "Template"
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def is_used(self):
+        """Determine if template package is used
+
+        Iterate over all packages in this template, and determine if any are
+        used.
+
+        Returns:
+            (bool): Whether this template contains any used packages or not
+        """
+        for pkgs in self._rendered_packages.values():
+            for pkg in pkgs.values():
+                if pkg.is_used():
+                    return True
+        return False
+
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """String representation of package information
 
         Args:
             indent (int): Number of spaces to indent lines with
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): String representation of this package
         """
 
-        out_str = super().info(indent, verbosity, color_level)
-        new_indent = indent + 4
-        for pkgs in self._rendered_packages.values():
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
+
+        out_str = ""
+        pkg_man_indent = indent + SUB_INDENT
+        indentation = " " * pkg_man_indent
+        color = rucolor.level_func(color_level + 1)
+        for pkg_man, pkgs in self._rendered_packages.items():
+            if pkgs:
+                out_str += color(f"{indentation}{pkg_man} packages:\n")
+
             for pkg in pkgs.values():
                 out_str += pkg.info(
-                    indent=new_indent, verbosity=verbosity, color_level=color_level + 1
+                    indent=pkg_man_indent + SUB_INDENT,
+                    verbosity=verbosity,
+                    color_level=color_level + 2,
+                    only_used=only_used,
                 )
+
+        if out_str == "" and not only_used:
+            indentation = " " * (indent + SUB_INDENT)
+            out_str = f"{indentation}No rendered packages\n"
+
+        # If there are any rendered packages, prepend the header
+        if out_str != "" or not only_used:
+            out_str = super().info(indent, verbosity, color_level, only_used=only_used) + out_str
         return out_str
 
     def render_package(self, expander: object, package_manager: PackageManagerBase):
@@ -238,7 +309,7 @@ class TemplatePackage(SoftwarePackage):
         Returns:
             (SoftwarePackage): Rendered SoftwarePackage
         """
-        name = expander.expand_var(self.name)
+        name = expander.expand_var(self.name, merge_used_stage=False)
         pm_name = package_manager.name
         pkg_info = self.pkg_info
         pm_prefix = package_manager.spec_prefix()
@@ -253,9 +324,15 @@ class TemplatePackage(SoftwarePackage):
                 + f"no spec was found for package manager {pm_name}.\n"
             )
 
-        spec = expander.expand_var(raw_spec)
-        compiler = expander.expand_var(raw_compiler) if raw_compiler else None
-        compiler_spec = expander.expand_var(raw_compiler_spec) if raw_compiler_spec else None
+        spec = expander.expand_var(raw_spec, merge_used_stage=False)
+        compiler = (
+            expander.expand_var(raw_compiler, merge_used_stage=False) if raw_compiler else None
+        )
+        compiler_spec = (
+            expander.expand_var(raw_compiler_spec, merge_used_stage=False)
+            if raw_compiler_spec
+            else None
+        )
 
         new_pkg = RenderedPackage(name, pkg_info, package_manager, spec, compiler, compiler_spec)
 
@@ -301,27 +378,54 @@ class SoftwareEnvironment:
         self.name = name
         self._packages = []
         self._environment_type = "Base"
+        self._used = False
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def is_used(self):
+        """Determine if environment is used or not
+
+        Returns:
+            (bool): Whether environment is used or not
+        """
+        return self._used
+
+    def mark_used(self):
+        """Mark this environment (and all of its packages) as used"""
+        self._used = True
+        for pkg in self._packages:
+            pkg.mark_used()
+
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """Software environment information
 
         Args:
             indent (int): Number of spaces to inject as indentation
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): information of this environment
         """
 
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
+
         indentation = " " * indent
         color = rucolor.level_func(color_level)
         out_str = color(f"{indentation}{self._environment_type} environment: {self.name}\n")
-        out_str += f"{indentation}    Packages:\n"
+
+        if self._packages:
+            indentation = " " * (indent + SUB_INDENT)
+            out_str += f"{indentation}Packages:\n"
+
         for pkg in self._packages:
             if verbosity >= 1:
-                out_str += f'{indentation}    - {pkg.name} = {pkg.spec_str().replace("@", "@@")}\n'
+                out_str += f'{indentation}- {pkg.name} = {pkg.spec_str().replace("@", "@@")}\n'
             else:
-                out_str += f"{indentation}    - {pkg.name}\n"
+                out_str += f"{indentation}- {pkg.name}\n"
         return out_str
 
     def __str__(self):
@@ -369,9 +473,18 @@ class ExternalEnvironment(SoftwareEnvironment):
         super().__init__(name)
         self.external_env = name_or_path
 
+
+class RenderedExternalEnvironment(ExternalEnvironment):
+    """Class representing a rendered externally defined software environment"""
+
+    def __init__(self, name: str, name_or_path: str, package_manager: PackageManagerBase):
+        """Constructor for external software environment"""
+        super().__init__(name, name_or_path)
+        self.package_manager = package_manager
+
     @property
     def package_manager_name(self):
-        return "spack"
+        return self.package_manager.name
 
 
 class RenderedEnvironment(SoftwareEnvironment):
@@ -404,24 +517,61 @@ class TemplateEnvironment(SoftwareEnvironment):
         self._rendered_environments = defaultdict(dict)
         self._environment_type = "Template"
 
+    def is_used(self):
+        """Determine if TemplateEnvironment is used or not
+
+        Returns:
+            (bool): Whether template environment is used or not
+        """
+        for envs in self._rendered_environments.values():
+            for env in envs.values():
+                if env.is_used():
+                    return True
+        return False
+
     def add_package_name(self, package: str = ""):
         self._package_names.add(package)
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """Software environment information
 
         Args:
             indent (int): Number of spaces to inject as indentation
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): information of this environment
         """
-        out_str = super().info(indent, verbosity, color_level=color_level)
-        new_indent = indent + 4
-        for envs in self._rendered_environments.values():
-            for env in envs.values():
-                out_str += env.info(new_indent, verbosity, color_level=color_level + 1)
+
+        # Don't print if it is unused and we are only interested in used packages
+        if only_used and not self.is_used():
+            return ""
+
+        out_str = ""
+        if self._rendered_environments:
+            for envs in self._rendered_environments.values():
+                for env in envs.values():
+                    out_str += env.info(
+                        indent + SUB_INDENT,
+                        verbosity,
+                        color_level=color_level + 1,
+                        only_used=only_used,
+                    )
+        elif not only_used:
+            indentation = " " * (indent + SUB_INDENT)
+            out_str += f"{indentation}No rendered environments\n"
+
+        # If there are rendered environments, prepend the header
+        if out_str != "" or not only_used:
+            out_str = (
+                super().info(indent, verbosity, color_level=color_level, only_used=only_used)
+                + out_str
+            )
+
         return out_str
 
     def __str__(self):
@@ -461,9 +611,12 @@ class TemplateEnvironment(SoftwareEnvironment):
             if rendered_env_pkg_name:
                 added = False
                 for template_pkg in all_package_templates.values():
+                    expander.flush_used_variable_stage()
                     rendered_pkg = template_pkg.render_package(expander, package_manager)
 
                     if rendered_env_pkg_name == rendered_pkg.name:
+                        expander.merge_used_variable_stage()
+
                         if rendered_pkg.name in all_packages[pm_name]:
                             if rendered_pkg != all_packages[pm_name][rendered_pkg.name]:
                                 raise RambleSoftwareEnvironmentError(
@@ -521,28 +674,54 @@ class SoftwareEnvironments:
         self._workspace = workspace
         self._software_dict = workspace.get_software_dict().copy()
         self._environment_templates = {}
+        self._external_env_templates = {}
         self._package_templates = {}
         self._rendered_packages = defaultdict(dict)
         self._rendered_environments = defaultdict(dict)
 
         self._define_templates()
 
-    def info(self, indent: int = 0, verbosity: int = 0, color_level: int = 0):
+    def info(
+        self, indent: int = 0, verbosity: int = 0, color_level: int = 0, only_used: bool = True
+    ):
         """Information for all packages and environments
 
         Args:
             indent (int): Number of spaces to indent lines with
             verbosity (int): Verbosity level
+            color_level (int): Nested level for coloring
+            only_used (bool): Whether to only track used info (True) or all info (False)
 
         Returns:
             (str): Representation of all packages and environments
         """
         out_str = ""
         for pkg in self._package_templates.values():
-            out_str += pkg.info(indent, verbosity=verbosity, color_level=color_level)
+            out_str += pkg.info(
+                indent, verbosity=verbosity, color_level=color_level, only_used=only_used
+            )
         for env in self._environment_templates.values():
-            out_str += env.info(indent, verbosity=verbosity, color_level=color_level)
+            out_str += env.info(
+                indent, verbosity=verbosity, color_level=color_level, only_used=only_used
+            )
         return out_str
+
+    def use_environment(self, package_manager, env_name):
+        """Mark an environment as used.
+
+        Given a package manager object and the name of a rendered environment,
+        mark the environment as used. This allows the info method to only print
+        information about used packages and environments.
+
+        Args:
+            package_manager (PackageManagerBase): Reference to a package manager object
+            env_name (str): Name of the rendered environment to mark as used
+        """
+
+        pm_name = package_manager.spec_prefix()
+        if pm_name in self._rendered_environments:
+            if env_name in self._rendered_environments[pm_name]:
+                self._rendered_environments[pm_name][env_name].mark_used()
 
     def unused_environments(self):
         """Iterator over environment templates that do not have any rendered environments
@@ -583,10 +762,10 @@ class SoftwareEnvironments:
         if namespace.environments in self._software_dict:
             for env_template, env_info in self._software_dict[namespace.environments].items():
                 if namespace.external_env in env_info and env_info[namespace.external_env]:
-                    # External environments are considered rendered
+                    # External environments are stored in a separate template dict, such that it
+                    # still goes through the rendering to concretize on the package_manager used.
                     new_env = ExternalEnvironment(env_template, env_info[namespace.external_env])
-                    # TODO: is external env a spack-only concept?
-                    self._rendered_environments["spack"][env_template] = new_env
+                    self._external_env_templates[env_template] = new_env
                 else:
                     # Define a new template environment
                     new_env = TemplateEnvironment(env_template)
@@ -614,9 +793,11 @@ class SoftwareEnvironments:
                 while cur_compiler and cur_compiler not in self._rendered_packages[pm_name]:
                     added = False
                     for template_name, template_def in self._package_templates.items():
-                        rendered_name = expander.expand_var(template_name)
+                        expander.flush_used_variable_stage()
+                        rendered_name = expander.expand_var(template_name, merge_used_stage=False)
 
                         if rendered_name == cur_compiler:
+                            expander.merge_used_variable_stage()
                             rendered_pkg = template_def.render_package(
                                 expander, environment.package_manager
                             )
@@ -753,14 +934,19 @@ class SoftwareEnvironments:
                 "`render_environment` expects a non-null package manager"
             )
 
-        # Check for an external environment before checking templates
-        if env_name in self._rendered_environments[pm_name]:
-            if isinstance(self._rendered_environments[pm_name][env_name], ExternalEnvironment):
-                return self._rendered_environments[pm_name][env_name]
+        # Check for an external environment before checking templates that need to be rendered
+        if env_name in self._external_env_templates:
+            ext_env_tmpl = self._external_env_templates[env_name]
+            ext_env_spec = expander.expand_var(ext_env_tmpl.external_env)
+            rendered_ext_env = RenderedExternalEnvironment(env_name, ext_env_spec, package_manager)
+            self._rendered_environments[pm_name][env_name] = rendered_ext_env
+            return rendered_ext_env
 
         for template_name, template_def in self._environment_templates.items():
-            rendered_name = expander.expand_var(template_name)
+            expander.flush_used_variable_stage()
+            rendered_name = expander.expand_var(template_name, merge_used_stage=False)
             if rendered_name == env_name:
+                expander.merge_used_variable_stage()
                 rendered_env = template_def.render_environment(
                     expander, self._package_templates, self._rendered_packages, package_manager
                 )

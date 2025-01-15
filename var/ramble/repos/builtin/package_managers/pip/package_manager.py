@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -8,17 +8,19 @@
 
 import os
 import re
+import shutil
 import sys
+import urllib.parse
 
 from ramble.application import ApplicationError
 from ramble.pkgmankit import *
 
 import ramble.config
-from ramble.error import RambleError
-from ramble.util.executable import which
-from ramble.util.hashing import hash_file, hash_string
+from ramble.util.hashing import hash_string
 from ramble.util.logger import logger
 from ramble.util.shell_utils import source_str
+import ramble.stage
+import ramble.fetch_strategy
 
 from spack.util.executable import Executable
 import llnl.util.filesystem as fs
@@ -28,6 +30,8 @@ class Pip(PackageManagerBase):
     """Pip package manager class definition"""
 
     name = "pip"
+
+    _spec_prefix = "pip"
 
     def __init__(self, file_path):
         super().__init__(file_path)
@@ -206,6 +210,31 @@ class Pip(PackageManagerBase):
             "If a software mirror is required, it needs to be set up outside of Ramble"
         )
 
+    def _add_software_to_results(self, workspace, app_inst=None):
+        """Augment the owning experiment's results with software stack information
+
+        This is a registered phase by the base package manager class, so here
+        we only override its base definition.
+
+        Args:
+            workspace (Workspace): A reference to the workspace that owns the
+                                   current pipeline
+            app_inst (Application): A reference to the application instance for
+                                    the current experiment
+        """
+
+        env_path = self.app_inst.expander.env_path
+        self.runner.set_dry_run(workspace.dry_run)
+        self.runner.configure_env(env_path)
+
+        if self._spec_prefix not in app_inst.result.software:
+            app_inst.result.software[self._spec_prefix] = []
+
+        package_list = app_inst.result.software[self._spec_prefix]
+
+        for info in self.runner.package_provenance():
+            package_list.append(info)
+
 
 package_name_regex = re.compile(
     r"\s*(?P<pkg_name>[A-Z0-9][A-Z0-9._-]*[A-Z0-9]|[A-Z0-9]).*", re.IGNORECASE
@@ -223,7 +252,7 @@ def _extract_pkg_name(pkg_spec):
     return match.group("pkg_name") if match else None
 
 
-class PipRunner:
+class PipRunner(CommandRunner):
     """Runner for executing pip+venv commands."""
 
     _venv_name = ".venv"
@@ -233,20 +262,16 @@ class PipRunner:
     install_config_name = "config:pip:install"
 
     def __init__(self, dry_run=False):
-        self.bs_python = None
+        super().__init__(name="pip", command=sys.executable, dry_run=dry_run)
+        self.bs_python = self.command
         self.env_path = None
         self.configs = []
-        self.dry_run = dry_run
         self.specs = set()
         self.installed = False
 
     def configure_env(self, path):
         """Configure the venv path for subsequent commands"""
         self.env_path = path
-
-    def set_dry_run(self, dry_run=False):
-        """Set the dry_run state of this pip runner"""
-        self.dry_run = dry_run
 
     def create_env(self, env_path):
         """Ensure a venv environment is created"""
@@ -258,9 +283,9 @@ class PipRunner:
 
         if not self.dry_run:
             if not os.path.exists(os.path.join(env_path, self._venv_name)):
-                bs_python = self.get_bootstrap_python()
-                bs_python(
-                    "-m", "venv", os.path.join(env_path, self._venv_name)
+                self.execute(
+                    self.bs_python,
+                    ["-m", "venv", os.path.join(env_path, self._venv_name)],
                 )
 
         # Ensure subsequent commands use the created env now.
@@ -268,7 +293,7 @@ class PipRunner:
 
     def _get_venv_python(self):
         if self.dry_run:
-            return self.get_bootstrap_python().copy()
+            return self.bs_python.copy()
         return Executable(
             os.path.join(self.env_path, self._venv_name, "bin", "python")
         )
@@ -290,21 +315,15 @@ class PipRunner:
         )
         install_args = ["install", "-r", req_file, *installer_flags]
         freeze_args = ["freeze", "-r", req_file]
-        if self.dry_run:
-            self._dry_run_print(installer, install_args)
-            self._dry_run_print(installer, freeze_args)
-        else:
-            installer(*install_args)
+        self.execute(installer, install_args)
+        out = self.execute(installer, freeze_args, return_output=True)
+        if out is not None:
             lock_file = os.path.join(self.env_path, self._lock_file_name)
             with open(lock_file, "w") as f:
-                installer(*freeze_args, output=f)
+                f.write(out)
         self.installed = True
 
     def get_bootstrap_python(self):
-        if not self.bs_python:
-            # Set up python for bootstrapping.
-            # Simply use the same interpreter as the current Ramble.
-            self.bs_python = which(sys.executable, required=True)
         return self.bs_python
 
     def _get_activate_script_path(self):
@@ -322,8 +341,7 @@ class PipRunner:
 
     def generate_activate_command(self):
         """Generate a command to activate a virtual env"""
-        shell = ramble.config.get("config:shell")
-        return [f"{source_str(shell)} {self._get_activate_script_path()}"]
+        return [f"{source_str(self.shell)} {self._get_activate_script_path()}"]
 
     def generate_deactivate_command(self):
         """Generate a command to deactivate a virtual env"""
@@ -344,7 +362,7 @@ class PipRunner:
             existing_req_mtime = os.path.getmtime(req_file)
             existing_lock_mtime = os.path.getmtime(lock_file)
             if existing_lock_mtime >= existing_req_mtime:
-                with open(req_file, "r") as f:
+                with open(req_file) as f:
                     if f.read() == contents:
                         self.installed = True
                         logger.debug("requirement file already up-to-date")
@@ -359,6 +377,26 @@ class PipRunner:
         and writes the output requirements.txt to the current env_path.
         """
         self._check_env_configured()
+        dest = os.path.join(self.env_path, self._requirement_file_name)
+        # When a file is given, assume it's a requirements.txt.
+        if os.path.isfile(external_env_path):
+            logger.msg(
+                f"Treat {external_env_path} as an externally defined requirements.txt file"
+            )
+            shutil.copyfile(external_env_path, dest)
+            return
+        parsed_path = urllib.parse.urlparse(external_env_path)
+        if parsed_path.scheme:
+            fetcher = ramble.fetch_strategy.URLFetchStrategy(
+                url=external_env_path
+            )
+            with ramble.stage.InputStage(
+                fetcher,
+                path=os.path.dirname(dest),
+                name=os.path.basename(dest),
+            ) as stage:
+                stage.fetch()
+            return
         # Assume the given external_env_path already points to a venv path,
         # If not, also attempt path/.venv/.
         maybe_paths = ["", self._venv_name]
@@ -370,13 +408,16 @@ class PipRunner:
                 break
         if not ext_python_path:
             raise RunnerError(
-                f"The given external env path {external_env_path} does not point to a valid venv"
+                f"The given external env path {external_env_path} does not point to a valid venv "
+                "or requirements.txt file"
             )
         ext_python = Executable(ext_python_path)
-        with open(
-            os.path.join(self.env_path, self._requirement_file_name), "w"
-        ) as f:
-            ext_python("-m", "pip", "freeze", output=f)
+        out = self.execute(
+            ext_python, ["-m", "pip", "freeze"], return_output=True
+        )
+        if out is not None:
+            with open(dest, "w") as f:
+                f.write(out)
 
     def define_path_vars(self, app_inst, cache):
         """Define path variables"""
@@ -387,7 +428,7 @@ class PipRunner:
         if not lock_file:
             raise RunnerError(f"Lock file {lock_file} is missing")
         pkgs = []
-        with open(lock_file, "r") as f:
+        with open(lock_file) as f:
             for line in f.readlines():
                 # pip freeze generates such a comment, which serves as a divider
                 # for packages that are added as deps of the ones defined directly.
@@ -420,7 +461,7 @@ class PipRunner:
         exe.add_default_arg("pip")
         exe.add_default_arg("show")
         for pkg in unresolved_pkgs:
-            pkg_info_raw = exe(pkg, output=str)
+            pkg_info_raw = self.execute(exe, [pkg], return_output=True)
             pkg_path = None
             for line in pkg_info_raw.split(os.linesep):
                 info = line.split(":")
@@ -447,8 +488,12 @@ class PipRunner:
     def get_version(self):
         if self.dry_run:
             return "unknown"
-        exe = self._get_venv_python()
-        out = exe("-m", "pip", "--version", output=str)
+        # The bootstrap python should have the same version as the venv one.
+        # Use the bootstrap one here as get_version may be called (for instance for compute hash)
+        # before the venv environment is constructed.
+        out = self.execute(
+            self.bs_python, ["-m", "pip", "--version"], return_output=True
+        )
         match = re.search(r"pip (?P<version>[\d.]+) from", out).group(
             "version"
         )
@@ -456,11 +501,7 @@ class PipRunner:
 
     def inventory_hash(self):
         """Create a hash for ramble inventory purposes"""
-        self._check_env_configured()
-        if self.dry_run:
-            return hash_string(self._generate_requirement_content())
-        else:
-            return hash_file(os.path.join(self.env_path, self._lock_file_name))
+        return hash_string(self._generate_requirement_content())
 
     def installed_packages(self):
         """Return a set of installed packages based on the lock file"""
@@ -479,10 +520,56 @@ class PipRunner:
                         pkgs.add(req.split("==")[0].strip())
         return pkgs
 
-    def _dry_run_print(self, executable, args):
-        logger.msg(f"DRY-RUN: would run {executable}")
-        logger.msg(f"         with args: {args}")
+    def _package_dict_from_str(self, in_str):
+        """Construct a package dictionary from a package string
 
+        Args:
+            in_str (str): String representing a package, as output from `pip freeze`
 
-class RunnerError(RambleError):
-    """Raised when a problem occurs with a pip+venv environment"""
+        Returns:
+            (dict): Dictionary representing the package information
+        """
+
+        if not in_str:
+            return None
+
+        parts = in_str.replace("\n", "").split("==")
+
+        if len(parts) <= 1:
+            return None
+
+        version = parts[1]
+
+        if "[" in parts[0]:
+            name_parts = parts[0].replace("]", "").split("[")
+            name = name_parts[0]
+            variants = name_parts[1]
+        else:
+            name = parts[0]
+            variants = ""
+
+        info_dict = {"name": name, "version": version, "variants": variants}
+
+        return info_dict
+
+    def package_provenance(self):
+        """Iterator over package information dictionaries
+
+        Examine the package definitions in the environment lock file. Yield
+        each valid package dictionary created from lines in the lock file.
+
+        Yields:
+            (dict): Package information dictionary
+        """
+
+        lock_file = os.path.join(self.env_path, self._lock_file_name)
+
+        if os.path.exists(lock_file):
+            with open(lock_file) as f:
+                for line in f.readlines():
+                    info_dict = self._package_dict_from_str(
+                        line.replace("\n", "")
+                    )
+
+                    if info_dict:
+                        yield info_dict

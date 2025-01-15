@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -18,6 +18,7 @@ from ramble.main import RambleCommand
 workspace = RambleCommand("workspace")
 
 
+@pytest.mark.long
 @pytest.mark.parametrize(
     "scope",
     [
@@ -53,7 +54,7 @@ def test_gromacs_mock_spack_config_mod(
 
         assert os.path.isfile(exp_script)
 
-        spack_yaml = os.path.join(ws1.software_dir, "gromacs", "spack.yaml")
+        spack_yaml = os.path.join(ws1.software_dir, "spack", "gromacs", "spack.yaml")
         assert os.path.isfile(spack_yaml)
 
         with open(spack_yaml) as f:

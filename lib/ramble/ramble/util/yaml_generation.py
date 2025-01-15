@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -27,6 +27,7 @@ Would translate to `foo.bar.baz = 1.0` in Ramble syntax.
 
 from typing import Dict, Any
 import ruamel.yaml as yaml
+import spack.util.spack_yaml as syaml
 
 from ramble.util.logger import logger
 
@@ -43,7 +44,7 @@ def read_config_file(conf_path: str):
     with open(conf_path) as base_conf:
         logger.debug(f"Reading config from {conf_path}")
         try:
-            config_dict = yaml.safe_load(base_conf)
+            config_dict = syaml.load(base_conf)
         except yaml.YAMLError:
             logger.die(f"YAML Error: Failed to load data from {conf_path}")
 
@@ -107,7 +108,7 @@ def get_config_value(config_data: Dict, option_name: str):
     return None
 
 
-def set_config_value(config_data: Dict, option_name: str, option_value: Any):
+def set_config_value(config_data: Dict, option_name: str, option_value: Any, force: bool = False):
     """Set a config option based on dictionary attribute syntax
 
     Given an option_name of the format: attr1.attr2.attr3 set its value to
@@ -117,6 +118,8 @@ def set_config_value(config_data: Dict, option_name: str, option_value: Any):
         config_data (dict): A config dictionary representing data read from a YAML file.
         option_name (str): Name of config option to set
         option_value (any): Value to set config option to
+        force (bool): If true, all missing layers in the attribute list are created.
+                      If false, only sets existing attributes
     """
     option_parts = option_name.split(".")
 
@@ -125,11 +128,49 @@ def set_config_value(config_data: Dict, option_name: str, option_value: Any):
     while len(option_parts) > 1:
         cur_part = option_parts.pop(0)
         if cur_part not in option_scope:
-            return
+            if not force:
+                return
+            option_scope[cur_part] = {}
         option_scope = option_scope[cur_part]
 
-    if option_parts[0] in option_scope:
+    set_value = force or option_parts[0] in option_scope
+    if set_value:
         option_scope[option_parts[0]] = option_value
+
+
+def remove_config_value(config_data: Dict, option_name: str):
+    """Remove a config option based on dictionary attribute syntax
+
+    Given an option_name of the format: attr1.attr2.attr3 remote it from config_data.
+    Also, remove any parent scopes that are empty.
+
+    Args:
+        config_data (dict): A config dictionary representing data read from a YAML file.
+        option_name (str): Name of config option to set
+    """
+    option_parts = option_name.split(".")
+
+    option_scope = config_data
+
+    reverse_stack = []
+
+    # Walk the parts, to find the lowest level to remove
+    while len(option_parts) > 1:
+        cur_part = option_parts.pop(0)
+        if cur_part not in option_scope:
+            return
+        reverse_stack.append((option_scope, cur_part))
+        option_scope = option_scope[cur_part]
+
+    # Remove the lowest level
+    if option_parts[0] in option_scope:
+        del option_scope[option_parts[0]]
+
+    # Walk back up the stack, and remove any empty parents
+    while reverse_stack:
+        option_scope, cur_part = reverse_stack.pop()
+        if cur_part in option_scope and not option_scope[cur_part]:
+            del option_scope[cur_part]
 
 
 def apply_default_config_values(config_data, app_inst, default_config_string):

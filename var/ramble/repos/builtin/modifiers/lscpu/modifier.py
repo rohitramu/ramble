@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -7,6 +7,8 @@
 # except according to those terms.
 
 from ramble.modkit import *
+
+import ramble.util.shell_utils
 
 
 class Lscpu(BasicModifier):
@@ -90,9 +92,47 @@ class Lscpu(BasicModifier):
             units="",
             log_file="{lscpu_log}",
             contexts=["architecture"],
+            fom_type=FomType.INFO,
         )
 
     register_builtin("lscpu_exec")
 
     def lscpu_exec(self):
         return ["lscpu >> {lscpu_log}"]
+
+    register_builtin("get_detected_arch", injection_method="append")
+
+    def get_detected_arch(self):
+        """Collect detected arch from both Spack and GCC, if they are available."""
+        shell = ramble.config.get("config:shell")
+        spack_arch = ramble.util.shell_utils.cmd_sub_str(shell, "spack arch")
+        gcc_arch = ramble.util.shell_utils.cmd_sub_str(
+            shell,
+            "gcc -march=native -Q --help=target | grep -- '-march=  ' | cut -f3",
+        )
+        return [
+            f"""
+if which spack > /dev/null; then
+    spack_arch={spack_arch}
+    echo "Spack detected arch=$spack_arch" >> {{lscpu_log}}
+fi
+
+if which gcc > /dev/null; then
+    gcc_arch={gcc_arch}
+    echo "GCC detected arch=$gcc_arch" >> {{lscpu_log}}
+fi\n"""
+        ]
+
+    figure_of_merit(
+        "spack_arch",
+        fom_regex=r"^\s*Spack detected arch=\s*(?P<spack_arch>.*)",
+        group_name="spack_arch",
+        log_file="{lscpu_log}",
+    )
+
+    figure_of_merit(
+        "gcc_arch",
+        fom_regex=r"^\s*GCC detected arch=\s*(?P<gcc_arch>.*)",
+        group_name="gcc_arch",
+        log_file="{lscpu_log}",
+    )

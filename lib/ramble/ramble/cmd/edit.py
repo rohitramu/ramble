@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -52,7 +52,10 @@ def edit_object(name, obj_type_name, repo_path, namespace):
             # "  Use `ramble create` to create a new application"
         )
 
-    editor(path)
+    try:
+        editor(path)
+    except TypeError:
+        logger.die("No valid editor was found.")
 
 
 def setup_parser(subparser):
@@ -136,9 +139,15 @@ def edit(parser, args):
                     logger.die(f"No file for '{name}' was found in {path}")
                 path = files[0]  # already confirmed only one entry in files
 
-        editor(path)
+        try:
+            editor(path)
+        except TypeError:
+            logger.die("No valid editor was found.")
     elif name:
         edit_object(name, args.type, args.repo, args.namespace)
     else:
         # By default open the directory where applications live
-        editor(path)
+        try:
+            editor(path)
+        except TypeError:
+            logger.die("No valid editor was found.")

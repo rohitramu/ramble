@@ -1,4 +1,4 @@
-.. Copyright 2022-2024 The Ramble Authors
+.. Copyright 2022-2025 The Ramble Authors
 
    Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
    https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -27,8 +27,8 @@ files that the user can modify to control the exact behavior of the experiments
 within the workspace.
 
 Ramble can create two types of workspaces:
-* anonymous workspaces
-* named workspaces
+  * anonymous workspaces
+  * named workspaces
 
 ^^^^^^^^^^^^^^^
 Named Workspace
@@ -114,12 +114,12 @@ Ramble creates workspaces using the following structure by default:
 
 
 This various parts of this directory structure are defined as:
-* ``configs/``: Contain configuration for the workspace
-* ``configs/auxiliary_software_files``: Contain files used by the package managers
-* ``experiments/``: Contain experiments define by the workspace configuration
-* ``inputs``: Contain the inputs experiments in this workspace require
-* ``logs``: Contain some logging output from ramble
-* ``software``: Contain software environments an application's package manager creates
+  * ``configs/``: Contain configuration for the workspace
+  * ``configs/auxiliary_software_files``: Contain files used by the package managers
+  * ``experiments/``: Contain experiments define by the workspace configuration
+  * ``inputs``: Contain the inputs experiments in this workspace require
+  * ``logs``: Contain some logging output from ramble
+  * ``software``: Contain software environments an application's package manager creates
 
 In the ``configs`` directory, the ``ramble.yaml`` file is the primary workspace
 configuration file. The definition for this file is documented in the
@@ -267,6 +267,29 @@ And upload the deployment to a remote URL using:
 
   $ ramble deployment push -u <remote_url>
 
+The arguments ``-d`` and ``-u`` can refer to ``variables`` defined within any
+configuration scope that is workspace level or lower (i.e. site, user, etc..).
+This does not include variables defined within the ``applications``
+configuration section.
+
+For example:
+
+.. code-block:: yaml
+
+  ramble:
+    variables:
+      test_name: test
+      test_url: gs://test-bucket/test-dir
+    ...
+
+When paired with
+
+.. code-block:: console
+
+  $ ramble deployment push -d '{test_name}' -u '{test_url}'
+
+Would attempt to create a deployment in ``gs://test-bucket/test-dir/test``.
+
 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Pulling a Workspace Deployment
@@ -297,9 +320,9 @@ To make Ramble fully configure a workspace, one can use:
     $ ramble workspace setup
 
 This can be an expensive process, and Ramble will:
-* Install software
-* Download input files
-* Create all experiment directives and content
+  * Install software
+  * Download input files
+  * Create all experiment directives and content
 
 To perform a light-weight test version of this, one can use:
 
@@ -398,7 +421,7 @@ the installation and generate software environments for each experiment.
 
 As an example, if the applications and workspace configuration file provide a
 configuration for Spack, Ramble will generate
-`Spack environments<https://spack.readthedocs.io/en/latest/environments.html>`.
+`Spack environments<https://spack.readthedocs.io/en/latest/environments.html>`_.
 
 By default, Ramble uses the following format for creating a spack environment file:
 
@@ -591,8 +614,8 @@ Archiving a Workspace
 ---------------------
 
 A workspace can be archived to either:
-* Share with other people
-* Keep for future reproduction
+  * Share with other people
+  * Keep for future reproduction
 
 In order to archive a workspace, one can use:
 
@@ -607,9 +630,10 @@ An archive can be automatically uploaded to a mirror using:
     $ ramble workspace archive -t --upload-url <mirror_url>
 
 When Ramble creates an archive, it will collect the following files:
-* All files in ``$workspace/configs``
-* Generated files for each software environment. (i.e. Each ``spack.yaml`` for spack environments)
-* For each experiment, the following are collected:
+  * All files in ``$workspace/configs``
+  * Generated files for each software environment. (i.e. Each ``spack.yaml`` for spack environments)
+
+For each experiment, the following are collected:
   * Every rendered template (created from a ``$workspace/configs/*.tpl`` file)
   * Every file a success criteria or figure of merit would be extract from
   * Every file that matches an ``archive_pattern`` from the ``application.py``

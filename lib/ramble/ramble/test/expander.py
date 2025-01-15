@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -31,6 +31,8 @@ def exp_dict():
         "decimal.06.var": "foo",
         "size": '"0000.96"',  # Escaped as a string
         "test_mask": '"0x0"',
+        "max_len": 9,
+        "test_dict": {"test_key1": "test_val1", "test_key2": "test_val2"},
     }
 
 
@@ -72,7 +74,23 @@ def exp_dict():
         (r"\\{experiment_name\\}", "baz", set(), 3),
         ('"2.1.1" in ["2.1.1", "3.1.1", "4.2.1"]', "True", set(), 1),
         ('"2.1.2" in ["2.1.1", "3.1.1", "4.2.1"]', "False", set(), 1),
+        ('"3.1.2" not in ["2.1.1", "3.1.1", "4.2.1"]', "True", set(), 1),
+        ('"2.1.1" not in ["2.1.1", "3.1.1", "4.2.1"]', "False", set(), 1),
         ("{test_mask}", "0x0", {"test_mask"}, 1),
+        ('re_search(r"bz$", {experiment_name})', "False", set(), 1),
+        ('re_search("o+\\\\.b", {env_name})', "True", set(), 1),
+        ('"foo" in "{env_name}"', "True", set(), 1),
+        ('"c" in "{experiment_name}"', "False", set(), 1),
+        ('"foo123" not in "{env_name}"', "True", set(), 1),
+        ('"foo" not in "{env_name}"', "False", set(), 1),
+        ('"{env_name}"[:{max_len}:1]', "spack_foo", set(), 1),
+        ("not_a_slice[0]", "not_a_slice[0]", set(), 1),
+        ("not_a_valid_slice[0:a]", "not_a_valid_slice[0:a]", set(), 1),
+        ("{test_dict}", "{'test_key1': 'test_val1', 'test_key2': 'test_val2'}", set(), 1),
+        ("{test_dict['test_key1']}", "test_val1", set(), 1),
+        ("{test_dict['test_key2']}", "test_val2", set(), 1),
+        ("{test_dict['missing_key']}", "{test_dict['missing_key']}", set(), 1),
+        ("{test_dict[None]}", "{test_dict[None]}", set(), 1),
     ],
 )
 def test_expansions(input, output, no_expand_vars, passes):

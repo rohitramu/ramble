@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -69,9 +69,11 @@ import ramble.schema.variants
 import ramble.schema.repos
 import ramble.schema.modifier_repos
 import ramble.schema.package_manager_repos
+import ramble.schema.workflow_manager_repos
 import ramble.schema.base_application_repos
 import ramble.schema.base_modifier_repos
 import ramble.schema.base_package_manager_repos
+import ramble.schema.base_workflow_manager_repos
 
 from ramble.error import RambleError
 from ramble.util.logger import logger
@@ -99,9 +101,11 @@ section_schemas = {
     "repos": ramble.schema.repos.schema,
     "modifier_repos": ramble.schema.modifier_repos.schema,
     "package_manager_repos": ramble.schema.package_manager_repos.schema,
+    "workflow_manager_repos": ramble.schema.workflow_manager_repos.schema,
     "base_application_repos": ramble.schema.base_application_repos.schema,
     "base_modifier_repos": ramble.schema.base_modifier_repos.schema,
     "base_package_manager_repos": ramble.schema.base_package_manager_repos.schema,
+    "base_workflow_manager_repos": ramble.schema.base_workflow_manager_repos.schema,
 }
 
 # Same as above, but including keys for workspaces
@@ -142,11 +146,13 @@ config_defaults = {
         "build_stage": "$tempdir/ramble-stage",
         "concretizer": "clingo",
         "license_dir": spack.paths.default_license_dir,
-        "shell": "sh",
+        "shell": "bash",
         "spack": {"flags": {"install": "--reuse", "concretize": "--reuse"}},
         "pip": {"install": {"flags": []}},
         "input_cache": "$ramble/var/ramble/cache",
         "workspace_dirs": "$ramble/var/ramble/workspaces",
+        "upload": {"push_failed": True},
+        "report_dirs": "~/.ramble/reports",
     }
 }
 
@@ -938,12 +944,6 @@ def set(path, value, scope=None):
     Accepts the path syntax described in ``get()``.
     """
     return config.set(path, value, scope)
-
-
-def add_default_platform_scope(platform):
-    plat_name = os.path.join("defaults", platform)
-    plat_path = os.path.join(configuration_paths["defaults"][1], platform)
-    config.push_scope(ConfigScope(plat_name, plat_path))
 
 
 def scopes():

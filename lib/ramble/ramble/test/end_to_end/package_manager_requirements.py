@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -15,9 +15,9 @@ import ramble.config
 import ramble.software_environments
 from ramble.main import RambleCommand
 
+from ramble.util.command_runner import RunnerError
 from ramble.pkg_man.builtin.spack_lightweight import (
     SpackRunner,
-    RunnerError,
     ValidationFailedError,
 )
 
@@ -27,6 +27,7 @@ pytestmark = pytest.mark.usefixtures("mutable_config", "mutable_mock_workspace_p
 workspace = RambleCommand("workspace")
 
 
+@pytest.mark.long
 def test_package_manager_requirements_zlib(mock_applications, mock_modifiers):
     test_config = """
 ramble:
@@ -70,7 +71,7 @@ ramble:
 
         workspace("setup", global_args=["-w", workspace_name])
 
-        spack_yaml = os.path.join(ws.software_dir, "zlib-configs", "spack.yaml")
+        spack_yaml = os.path.join(ws.software_dir, "spack", "zlib-configs", "spack.yaml")
 
         assert os.path.isfile(spack_yaml)
 

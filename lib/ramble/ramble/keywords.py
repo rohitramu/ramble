@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -28,6 +28,7 @@ default_keys = {
     "license_input_dir": {"type": key_type.reserved, "level": output_level.variable},
     "experiments_file": {"type": key_type.reserved, "level": output_level.key},
     "experiment_name": {"type": key_type.reserved, "level": output_level.key},
+    "experiment_hash": {"type": key_type.reserved, "level": output_level.key},
     "experiment_run_dir": {"type": key_type.reserved, "level": output_level.variable},
     "experiment_status": {"type": key_type.reserved, "level": output_level.key},
     "experiment_index": {"type": key_type.reserved, "level": output_level.variable},
@@ -38,15 +39,17 @@ default_keys = {
     "err_file": {"type": key_type.reserved, "level": output_level.variable},
     "env_path": {"type": key_type.reserved, "level": output_level.variable},
     "input_name": {"type": key_type.reserved, "level": output_level.variable},
+    "repeat_index": {"type": key_type.reserved, "level": output_level.variable},
     "spec_name": {"type": key_type.optional, "level": output_level.variable},
     "env_name": {"type": key_type.optional, "level": output_level.variable},
     "n_ranks": {"type": key_type.required, "level": output_level.key},
     "n_nodes": {"type": key_type.required, "level": output_level.key},
     "processes_per_node": {"type": key_type.required, "level": output_level.key},
-    "n_threads": {"type": key_type.required, "level": output_level.key},
+    "n_threads": {"type": key_type.optional, "level": output_level.key},
     "batch_submit": {"type": key_type.required, "level": output_level.variable},
     "mpi_command": {"type": key_type.required, "level": output_level.variable},
-    "experiment_template_name": {"type": key_type.required, "level": output_level.key},
+    "experiment_template_name": {"type": key_type.reserved, "level": output_level.key},
+    "unformatted_command": {"type": key_type.reserved, "level": output_level.variable},
 }
 
 

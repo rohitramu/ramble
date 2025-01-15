@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -56,9 +56,22 @@ class IntelMpiBenchmarks(ExecutableApplication):
         use_mpi=True,
     )
 
+    executable(
+        "exchange",
+        "{install_path}/IMB-MPI1 Exchange -msglog {msglog_min}:{msglog_max} "
+        "-iter {num_iterations} {additional_args}",
+        use_mpi=True,
+    )
+
     workload("pingpong", executable="pingpong")
     workload("multi-pingpong", executable="multi-pingpong")
     workload("collective", executable="collective")
+    workload("exchange", executable="exchange")
+
+    workload_group(
+        "mpi1",
+        workloads=["pingpong", "multi-pingpong", "collective", "exchange"],
+    )
 
     workload_variable(
         "num_cores",
@@ -97,7 +110,7 @@ class IntelMpiBenchmarks(ExecutableApplication):
         "install_path",
         default="{intel-mpi-benchmarks_path}/bin",
         description="User configurable dir to executables",
-        workloads=["pingpong", "multi-pingpong", "collective"],
+        workloads=["*"],
     )
 
     workload_variable(
@@ -149,28 +162,28 @@ class IntelMpiBenchmarks(ExecutableApplication):
         "num_iterations",
         default="1000",
         description="Number of iterations to test over",
-        workloads=["pingpong", "multi-pingpong", "collective"],
+        workload_group="mpi1",
     )
 
     workload_variable(
         "msglog_min",
         default="1",
         description="Min Message Size (power of 2)",
-        workloads=["pingpong", "multi-pingpong", "collective"],
+        workload_group="mpi1",
     )
 
     workload_variable(
         "msglog_max",
         default="30",
         description="Max Message Size (power of 2)",
-        workloads=["pingpong", "multi-pingpong", "collective"],
+        workload_group="mpi1",
     )
 
     workload_variable(
         "additional_args",
         default="",
-        description="Number of iterations to test over",
-        workloads=["pingpong", "multi-pingpong", "collective"],
+        description="Additional cmd-line arguments",
+        workload_group="mpi1",
     )
 
     # Matches tables like:

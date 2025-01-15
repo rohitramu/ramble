@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -262,7 +262,7 @@ class Minixyce(ExecutableApplication):
 
         if os.path.isfile(output_file):
             names = []
-            with open(output_file, "r") as f:
+            with open(output_file) as f:
                 names = f.readline().split()
                 for line in f.readlines()[-1:]:
                     values = line.split()
@@ -271,6 +271,6 @@ class Minixyce(ExecutableApplication):
                 for i, (name, value) in enumerate(
                     zip(names[1:-2], values[1:-2])
                 ):
-                    f.write("{}: {} = {}\n".format((i + 1), name, value))
+                    f.write(f"{(i + 1)}: {name} = {value}\n")
 
         super()._analyze_experiments(workspace)

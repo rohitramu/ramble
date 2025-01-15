@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -144,8 +144,6 @@ class ExitCode(BasicModifier):
             app_inst.expander.expand_var("{exit_code_log}"), workspace
         )
 
-        logger.all_msg(f" Exit code log: {log_file}")
-
         exit_regex = re.compile(self.exit_code_regex)
         final_regex = re.compile("Final exit code: (?P<exit_code>[0-9]+)")
 
@@ -155,11 +153,9 @@ class ExitCode(BasicModifier):
         if os.path.exists(log_file):
             with open(log_file) as f:
                 for line in f.readlines():
-                    logger.all_msg(f" Exit line: {line}")
                     m = exit_regex.match(line)
 
                     if m:
-                        logger.all_msg(f'   Match: {m.group("exit_code")}')
                         max_code = max(max_code, int(m.group("exit_code")))
 
                     if final_regex.match(line):

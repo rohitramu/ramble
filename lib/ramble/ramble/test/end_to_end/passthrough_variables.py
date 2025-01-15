@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -82,7 +82,7 @@ def test_disable_passthrough(mutable_config, mutable_mock_workspace_path):
 ramble:
   variables:
    batch_submit: '{execute_experiment}'
-   processes_per_node: -1
+   processes_per_node: 1
   applications:
     hostname:
       workloads:

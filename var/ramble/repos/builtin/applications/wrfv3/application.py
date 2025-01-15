@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -102,6 +102,7 @@ class Wrfv3(ExecutableApplication):
         fom_regex=r"Average time:\s+(?P<avg_time>[0-9]+\.[0-9]*).*",
         group_name="avg_time",
         units="s",
+        fom_type=FomType.TIME,
     )
 
     figure_of_merit(
@@ -110,6 +111,7 @@ class Wrfv3(ExecutableApplication):
         fom_regex=r"Cumulative time:\s+(?P<total_time>[0-9]+\.[0-9]*).*",
         group_name="total_time",
         units="s",
+        fom_type=FomType.TIME,
     )
 
     figure_of_merit(
@@ -118,6 +120,7 @@ class Wrfv3(ExecutableApplication):
         fom_regex=r"Min time:\s+(?P<min_time>[0-9]+\.[0-9]*).*",
         group_name="min_time",
         units="s",
+        fom_type=FomType.TIME,
     )
 
     figure_of_merit(
@@ -126,6 +129,7 @@ class Wrfv3(ExecutableApplication):
         fom_regex=r"Max time:\s+(?P<max_time>[0-9]+\.[0-9]*).*",
         group_name="max_time",
         units="s",
+        fom_type=FomType.TIME,
     )
 
     figure_of_merit(
@@ -134,6 +138,7 @@ class Wrfv3(ExecutableApplication):
         fom_regex=r"Number of times:\s+(?P<count>[0-9]+)",
         group_name="count",
         units="",
+        fom_type=FomType.MEASURE,
     )
 
     figure_of_merit(
@@ -142,6 +147,7 @@ class Wrfv3(ExecutableApplication):
         fom_regex=r"Avg time / Max time:\s+(?P<avg_max_ratio>[0-9]+\.[0-9]*).*",
         group_name="avg_max_ratio",
         units="",
+        fom_type=FomType.MEASURE,
     )
 
     success_criteria(
@@ -177,7 +183,7 @@ class Wrfv3(ExecutableApplication):
             sum_time = 0.0
             count = 0
             for out_file in file_list:
-                with open(out_file, "r") as f:
+                with open(out_file) as f:
                     for line in f.readlines():
                         m = timing_regex.match(line)
                         if m:

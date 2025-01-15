@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -27,14 +27,16 @@ from .workspace import (
     config_dict,
     create,
     deactivate,
-    default_config_yaml,
     exists,
     is_workspace_dir,
     get_workspace_path,
+    get_filepath,
     config_file,
     config_file_name,
+    all_config_files,
     licenses_file,
     licenses_file_name,
+    metadata_file_name,
     workspace_software_path,
     auxiliary_software_dir_name,
     template_path,
@@ -67,14 +69,16 @@ __all__ = [
     "config_dict",
     "create",
     "deactivate",
-    "default_config_yaml",
     "exists",
     "is_workspace_dir",
     "get_workspace_path",
+    "get_filepath",
     "config_file",
     "config_file_name",
+    "all_config_files",
     "licenses_file",
     "licenses_file_name",
+    "metadata_file_name",
     "workspace_software_path",
     "auxiliary_software_dir_name",
     "template_path",

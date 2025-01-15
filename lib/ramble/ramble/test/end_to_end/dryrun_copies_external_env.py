@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -44,6 +44,7 @@ ramble:
     processes_per_node: '10'
     n_ranks: '{{processes_per_node}}*{{n_nodes}}'
     n_threads: '1'
+    my_external_env: {env_path}
   applications:
     wrfv4:
       workloads:
@@ -56,7 +57,7 @@ ramble:
     packages: {{}}
     environments:
       wrfv4:
-        external_env: {env_path}
+        external_env: '{{my_external_env}}'
 """
 
     setup_type = ramble.pipeline.pipelines.setup
@@ -78,7 +79,7 @@ ramble:
         setup_pipeline = setup_cls(ws, filters)
         setup_pipeline.run()
 
-        env_file = os.path.join(ws.software_dir, "wrfv4", "spack.yaml")
+        env_file = os.path.join(ws.software_dir, "spack", "wrfv4", "spack.yaml")
 
         assert os.path.exists(env_file)
 

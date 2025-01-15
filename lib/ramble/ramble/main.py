@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -64,7 +64,7 @@ intro_by_level = {
 }
 
 #: control top-level ramble options shown in basic vs. advanced help
-options_by_level = {"short": ["h", "k", "V", "color"], "long": "all"}
+options_by_level = {"short": ["h", "k", "V", "color", "d"], "long": "all"}
 
 #: Longer text for each section, to show in help
 section_descriptions = {
@@ -295,7 +295,7 @@ class RambleArgumentParser(argparse.ArgumentParser):
   ramble help --all       list all commands and options
   ramble help <command>   help on a specific command
   ramble help --spec      help on the application specification syntax
-  ramble docs             open https://ramble.rtfd.io/ in a browser
+  ramble docs             open https://ramble.readthedocs.io/ in a browser
 """.format(
                 help=section_descriptions["help"]
             )

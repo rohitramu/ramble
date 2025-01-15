@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -60,4 +60,4 @@ ramble:
         with open(os.path.join(ws.root, "results.latest.txt")) as f:
             data = f.read()
             assert "FAILED" in data
-            assert "0.9 s" not in data
+            assert "0.9 s" in data

@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -98,7 +98,7 @@ ramble:
         software_base_dir = os.path.join(ws.root, ramble.workspace.workspace_software_path)
         assert os.path.exists(software_base_dir)
 
-        software_path = os.path.join(software_base_dir, software_dir)
+        software_path = os.path.join(software_base_dir, "spack", software_dir)
         assert os.path.exists(software_path)
 
         for i, exp in enumerate(expected_experiments):

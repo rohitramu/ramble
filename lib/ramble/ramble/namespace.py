@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -12,7 +12,6 @@ class namespace:
 
     # For experiments
     ramble = "ramble"
-    application_dir = "application_directories"
     application = "applications"
     workload = "workloads"
     experiment = "experiments"
@@ -59,6 +58,10 @@ class namespace:
     indentation = "indentation"
     prefix = "prefix"
     join_separator = "join_separator"
+    commands = "commands"
 
     # For variants
     package_manager = "package_manager"
+    workflow_manager = "workflow_manager"
+
+    metadata = "metadata"

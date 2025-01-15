@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -15,6 +15,7 @@ import re
 import getpass
 import subprocess
 import tempfile
+import urllib.parse
 
 from llnl.util.lang import memoized
 
@@ -99,3 +100,23 @@ def canonicalize_path(path):
     path = os.path.abspath(path)
 
     return path
+
+
+def normalize_path_or_url(path):
+    """Convert a scheme-less path to absolute local path
+    Also, remove trailing back-slashes from the input path
+
+    Args:
+        path (str): Input path
+
+    Returns:
+        (str): Absolute local path or cleaned remote url
+    """
+
+    # Remove trailing back-slashes from path
+    real_path = path.rstrip("/")
+
+    parsed = urllib.parse.urlparse(real_path)
+    if not parsed.scheme:
+        return os.path.abspath(real_path)
+    return real_path

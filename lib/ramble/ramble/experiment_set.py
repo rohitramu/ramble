@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -214,12 +214,18 @@ class ExperimentSet:
 
         if n_ranks:
             n_ranks = int(expander.expand_var(n_ranks))
+            if n_ranks <= 0:
+                logger.error("n_ranks must be positive")
 
         if ppn:
             ppn = int(expander.expand_var(ppn))
+            if ppn <= 0:
+                logger.error("processes_per_node must be positive")
 
         if n_nodes:
             n_nodes = int(expander.expand_var(n_nodes))
+            if n_nodes <= 0:
+                logger.error("n_nodes must be positive")
 
         if n_threads:
             n_threads = int(expander.expand_var(n_threads))
@@ -264,14 +270,13 @@ class ExperimentSet:
         Returns:
             (Application): Instance of an application class for this experiment
         """
-        variables[self.keywords.env_path] = os.path.join(
-            self._workspace.software_dir, Expander.expansion_str(self.keywords.env_name)
-        )
-
         experiment_suffix = ""
         # After generating the base experiment, append the index to repeat experiments
         if repeats.repeat_index:
             experiment_suffix = f".{repeats.repeat_index}"
+            variables[self.keywords.repeat_index] = repeats.repeat_index
+        else:
+            variables[self.keywords.repeat_index] = 0
 
         expander = ramble.expander.Expander(variables, self)
         self._compute_mpi_vars(expander, variables)
@@ -291,6 +296,12 @@ class ExperimentSet:
         app_inst.set_modifiers(context.modifiers)
         app_inst.set_tags(context.tags)
         app_inst.set_formatted_executables(context.formatted_executables)
+
+        if app_inst.package_manager is not None:
+            variables[self.keywords.env_path] = os.path.join(
+                app_inst.package_manager.package_manager_dir(self._workspace),
+                Expander.expansion_str(self.keywords.env_name),
+            )
 
         final_wl_name = expander.expand_var_name(
             self.keywords.workload_name, allow_passthrough=False
@@ -336,6 +347,7 @@ class ExperimentSet:
             ),
         )
 
+        app_inst.add_expand_vars(self._workspace)
         app_inst.read_status()
 
         try:

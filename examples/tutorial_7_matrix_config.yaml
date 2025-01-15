@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -16,8 +16,8 @@ ramble:
     n_ranks: '{processes_per_node}*{n_nodes}'
     batch_submit: '{execute_experiment}'
     mpi_command: mpirun -n {n_ranks}
-    platform: ['platform1', 'platform2', 'platform3']
-    processes_per_node: ['16', '18', '20']
+    platform: [platform1, platform2, platform3]
+    processes_per_node: [16, 18, 20]
   zips:
     platform_config:
     - platform

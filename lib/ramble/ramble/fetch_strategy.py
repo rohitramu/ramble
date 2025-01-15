@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -385,7 +385,7 @@ class URLFetchStrategy(FetchStrategy):
             save_file = self.stage.save_filename
         logger.msg(f"Fetching {url}")
 
-        # Check if we're about to try and open a broken simlink, and if so
+        # Check if we're about to try and open a broken symlink, and if so
         # remove that file to avoid a bad situation where a file "exists" but
         # cannot be opened (warning: this is not atomic)
         if os.path.islink(save_file) and not os.path.exists(save_file):

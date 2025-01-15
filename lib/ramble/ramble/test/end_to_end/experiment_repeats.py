@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -24,6 +24,7 @@ pytestmark = pytest.mark.usefixtures("mutable_config", "mutable_mock_workspace_p
 workspace = RambleCommand("workspace")
 
 
+@pytest.mark.long
 def test_gromacs_repeats(mutable_config, mutable_mock_workspace_path):
     test_config = """
 ramble:
@@ -114,10 +115,10 @@ ramble:
 
         # Test software directories
         software_dirs = ["gromacs"]
-        software_base_dir = os.path.join(ws1.root, ramble.workspace.workspace_software_path)
+        software_base_dir = ws1.software_dir
         assert os.path.exists(software_base_dir)
         for software_dir in software_dirs:
-            software_path = os.path.join(software_base_dir, software_dir)
+            software_path = os.path.join(software_base_dir, "spack", software_dir)
             assert os.path.exists(software_path)
 
             spack_file = os.path.join(software_path, "spack.yaml")
@@ -125,12 +126,6 @@ ramble:
             for file in aux_software_files:
                 file_path = os.path.join(software_path, file)
                 assert os.path.exists(file_path)
-
-            lock_file = os.path.join(software_path, "spack.lock")
-            with open(lock_file, "w+") as f:
-                f.write("{\n")
-                f.write('\t"test_key": "val"\n')
-                f.write("}\n")
 
         # Each tuple (workload, exp base, n_repeats) expands to 1 base exp plus n_repeats exps
         expected_experiments = [
@@ -169,7 +164,7 @@ ramble:
         json_results_files = glob.glob(os.path.join(ws1.root, "results*.json"))
         yaml_results_files = glob.glob(os.path.join(ws1.root, "results*.yaml"))
 
-        # Match both the file and the simlink
+        # Match both the file and the symlink
         assert len(text_results_files) == 2
         assert len(json_results_files) == 2
         assert len(yaml_results_files) == 2
@@ -181,3 +176,12 @@ ramble:
                 assert "Core Time = 22.222 s" in data
                 assert "summary::mean = 16.666 s" in data
                 assert "summary::variance = 61.727 s^2" in data
+
+        # When --summary-only, only the base experiments are included
+        workspace("analyze", "-s", global_args=["-w", workspace_name])
+        result_file = glob.glob(os.path.join(ws1.root, "results.latest.txt"))[0]
+        with open(result_file) as f:
+            data = f.read()
+            assert "gromacs.water_bare.pme_single_rank" in data
+            assert "gromacs.water_bare.pme_single_rank.1" not in data
+            assert "gromacs.water_bare.pme_single_rank.2" not in data

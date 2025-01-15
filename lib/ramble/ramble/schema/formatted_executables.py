@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -26,6 +26,13 @@ properties = {
                 "prefix": {"type": "string", "default": ""},
                 "indentation": {"type": "number", "default": 0},
                 "join_separator": {"type": "string", "default": "\n"},
+                "commands": {
+                    "type": "array",
+                    "default": ["{unformatted_command}"],
+                    "items": {
+                        "type": "string",
+                    },
+                },
             },
         },
     }

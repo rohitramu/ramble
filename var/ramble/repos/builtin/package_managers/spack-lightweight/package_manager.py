@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -15,8 +15,7 @@ import shlex
 import fnmatch
 
 import llnl.util.filesystem as fs
-from spack.util.executable import CommandNotFoundError, ProcessError
-from ramble.util.executable import which
+from spack.util.executable import ProcessError
 import spack.util.spack_yaml as syaml
 
 import ramble.config
@@ -62,7 +61,7 @@ class SpackLightweight(PackageManagerBase):
 
         cache_tupl = ("spack-compilers", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -115,7 +114,7 @@ class SpackLightweight(PackageManagerBase):
 
         cache_tupl = ("spack-env", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -223,7 +222,7 @@ class SpackLightweight(PackageManagerBase):
 
         cache_tupl = ("concretize-env", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -274,7 +273,7 @@ class SpackLightweight(PackageManagerBase):
 
         cache_tupl = ("spack-mirror", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)
@@ -330,20 +329,19 @@ class SpackLightweight(PackageManagerBase):
     def _push_to_spack_cache(self, workspace, app_inst=None):
 
         # Test if experiment requires an environment
-        if not self.environment_required():
-            return
+        env_required = self.environment_required()
 
         env_path = self.app_inst.expander.env_path
         cache_tupl = ("push-to-cache", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already pushed, skipping".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already pushed, skipping")
             return
         else:
             workspace.add_to_cache(cache_tupl)
 
         try:
             self.runner.set_dry_run(workspace.dry_run)
-            self.runner.set_env(env_path)
+            self.runner.set_env(env_path, require_exists=env_required)
             self.runner.activate()
 
             self.runner.push_to_spack_cache(workspace.spack_cache_path)
@@ -496,13 +494,35 @@ class SpackLightweight(PackageManagerBase):
             out_str += f" (built with {pkg.compiler})"
         return out_str
 
+    def _add_software_to_results(self, workspace, app_inst=None):
+        """Augment the owning experiment's results with software stack information
+
+        This is a registered phase by the base package manager class, so here
+        we only override its base definition.
+
+        Args:
+            workspace (Workspace): A reference to the workspace that owns the
+                                   current pipeline
+            app_inst (Application): A reference to the application instance for
+                                    the current experiment
+        """
+        if self._spec_prefix not in app_inst.result.software:
+            app_inst.result.software[self._spec_prefix] = []
+
+        package_list = app_inst.result.software[self._spec_prefix]
+
+        self.runner.activate()
+        for info in self.runner.package_provenance():
+            package_list.append(info)
+        self.runner.deactivate()
+
 
 spack_namespace = "spack"
 
 package_name_regex = re.compile(r"[\s-]*(?P<package_name>[\w][\w-]+).*")
 
 
-class SpackRunner(object):
+class SpackRunner(CommandRunner):
     """Runner for executing several spack commands
 
     The SpackRunner class is primarily used to manage spack environments
@@ -545,10 +565,11 @@ class SpackRunner(object):
         """
         Ensure spack is found in the path, and setup some default variables.
         """
-        try:
-            self.spack = which("spack", required=True)
-        except CommandNotFoundError:
-            raise RunnerError("Spack command is not found in path")
+
+        super().__init__(
+            name="spack", command="spack", shell=shell, dry_run=dry_run
+        )
+        self.spack = self.command
 
         # Add default arguments to spack command.
         # This allows us to inject custom config scope dirs
@@ -559,7 +580,6 @@ class SpackRunner(object):
                 self.spack.add_default_arg(arg)
 
         self.spack_dir = os.path.dirname(os.path.dirname(self.spack.exe[0]))
-        self.shell = shell
 
         if self.shell == "bash":
             script = "setup-env.sh"
@@ -616,12 +636,6 @@ class SpackRunner(object):
             spack_version += f" ({spack_hash})"
 
         return spack_version
-
-    def set_dry_run(self, dry_run=False):
-        """
-        Set the dry_run state of this spack runner
-        """
-        self.dry_run = dry_run
 
     def set_compiler_config_dir(self, path=None):
         """
@@ -737,12 +751,10 @@ class SpackRunner(object):
     def _load_compiler_shell(self, spec, shell_flag, regex):
         args = ["load", shell_flag, spec]
 
-        if not self.dry_run:
-            load_cmds = self._run_command(
-                self.spack, args, return_output=True
-            ).split("\n")
+        load_cmds = self.execute(self.spack, args, return_output=True)
 
-            for cmd in load_cmds:
+        if load_cmds is not None:
+            for cmd in load_cmds.split("\n"):
                 env_var = regex.match(cmd)
                 if env_var:
                     self.spack.add_default_env(
@@ -754,8 +766,6 @@ class SpackRunner(object):
                     self.concretizer.add_default_env(
                         env_var.group("var"), env_var.group("val")
                     )
-        else:
-            self._dry_run_print(self.spack, args)
 
     def install_compiler(self, spec):
         """
@@ -813,24 +823,19 @@ class SpackRunner(object):
 
             args.append(spec)
 
-            if not self.dry_run:
-                self._run_command(self.installer, args)
-            else:
-                self._dry_run_print(self.installer, args)
+            self.execute(self.installer, args)
 
             self.load_compiler(spec)
 
-            if not self.dry_run:
-                self._run_command(self.spack, compiler_find_args)
+            self.execute(self.spack, compiler_find_args)
 
+            if not self.dry_run:
                 self.compilers.append(spec)
 
                 if self.active:
                     self.spack.add_default_env(self.env_key, active_env)
                     self.installer.add_default_env(self.env_key, active_env)
                     self.concretizer.add_default_env(self.env_key, active_env)
-            else:
-                self._dry_run_print(self.spack, compiler_find_args)
 
     def activate(self):
         """
@@ -838,7 +843,7 @@ class SpackRunner(object):
         """
         if not self.env_path:
             raise NoPathRunnerError(
-                "Environment runner has no " + "path congfigured"
+                "Environment runner has no path configured"
             )
 
         self.spack.add_default_env(self.env_key, self.env_path)
@@ -853,7 +858,7 @@ class SpackRunner(object):
         """
         if not self.env_path:
             raise NoPathRunnerError(
-                "Environment runner has no " + "path congfigured"
+                "Environment runner has no path configured"
             )
 
         if self.active and self.env_key in self.spack.default_env.keys():
@@ -865,7 +870,7 @@ class SpackRunner(object):
     def _check_active(self):
         if not self.env_path:
             raise NoPathRunnerError(
-                "Environment runner has no " + "path congfigured"
+                "Environment runner has no path configured"
             )
 
         if not self.active:
@@ -932,10 +937,7 @@ class SpackRunner(object):
             args = config_args.copy()
             args.append(config)
 
-            logger.all_msg(f" trying to run spack with {args}")
             self._run_command(self.spack, args)
-            if self.dry_run:
-                self._dry_run_print(self.spack, args)
 
         self.configs_applied = True
 
@@ -999,6 +1001,14 @@ class SpackRunner(object):
         env_file[spack_namespace]["concretizer"] = syaml.syaml_dict()
         env_file[spack_namespace]["concretizer"]["unify"] = True
 
+        link_type = ramble.config.get("config:spack:env_view:link_type")
+        env_file[spack_namespace]["view"] = syaml.syaml_dict()
+        env_file[spack_namespace]["view"]["default"] = syaml.syaml_dict()
+        env_file[spack_namespace]["view"]["default"]["root"] = os.path.join(
+            self.env_path, "ramble"
+        )
+        env_file[spack_namespace]["view"]["default"]["link_type"] = link_type
+
         env_file[spack_namespace]["specs"] = syaml.syaml_list()
         # Ensure the specs content are consistently sorted.
         # Otherwise the hash checking may artificially miss due to ordering.
@@ -1029,7 +1039,7 @@ class SpackRunner(object):
                 env_data = syaml.load_config(
                     syaml.dump_config(env_file, default_flow_style=False)
                 )
-                with open(spack_env_file, "r") as f:
+                with open(spack_env_file) as f:
                     existing_data = syaml.load_config(f)
                 gen_env_hash = ramble.util.hashing.hash_json(env_data)
                 existing_env_hash = ramble.util.hashing.hash_json(
@@ -1084,10 +1094,7 @@ class SpackRunner(object):
         if concretize_flags is not None:
             args.extend(shlex.split(concretize_flags))
 
-        if not self.dry_run:
-            self._run_command(self.concretizer, args)
-        else:
-            self._dry_run_print(self.concretizer, args)
+        self.execute(self.concretizer, args)
 
         self.concretized = True
 
@@ -1121,10 +1128,7 @@ class SpackRunner(object):
         if install_flags is not None:
             args.extend(shlex.split(install_flags))
 
-        if not self.dry_run:
-            self._run_command(self.installer, args)
-        else:
-            self._dry_run_print(self.installer, args)
+        self.execute(self.installer, args)
 
     def get_package_path(self, package_spec):
         """Return the installation directory for a package"""
@@ -1135,26 +1139,27 @@ class SpackRunner(object):
         name_args = ["find", "--format={name}"]
         name_args.extend(shlex.split(package_spec))
 
-        if not self.dry_run:
-            name = self._run_command(
-                self.spack, name_args, return_output=True
-            ).strip()
-            location = self._run_command(
-                self.spack, loc_args, return_output=True
-            ).strip()
-            return (name, location)
-        else:
-            self._dry_run_print(self.spack, name_args)
-            self._dry_run_print(self.spack, loc_args)
+        name = self.execute(self.spack, name_args, return_output=True)
+        location = self.execute(self.spack, loc_args, return_output=True)
 
+        if name is None:
             name = shlex.split(package_spec)[0]
             name_match = name_regex.match(name)
             if name_match:
                 name = name_match.group("name")
+        else:
+            # Remove newlines and whitespace from name
+            name = name.replace("\n", "").strip()
+
+        if location is None:
             location = os.path.join(
                 "dry-run", "path", "to", shlex.split(package_spec)[0]
             )
-            return (name, location)
+        else:
+            # Remove newlines and whitespace from location
+            location = location.replace("\n", "").strip()
+
+        return (name, location)
 
     def mirror_environment(self, mirror_path):
         """Create a spack mirror from the activated environment"""
@@ -1169,13 +1174,9 @@ class SpackRunner(object):
             mirror_path,
         ]
 
-        if not self.dry_run:
-            out_str = self._run_command(
-                self.spack, args, return_output=True
-            ).strip()
-            return out_str
-        else:
-            self._dry_run_print(self.spack, args)
+        out_str = self.execute(self.spack, args, return_output=True)
+
+        if out_str is None:
             return """
   %-4d already present
   %-4d added
@@ -1184,6 +1185,8 @@ class SpackRunner(object):
                 0,
                 0,
             )
+
+        return out_str.strip()
 
     def get_env_hash_list(self):
         self._check_active()
@@ -1211,14 +1214,12 @@ class SpackRunner(object):
 
         args.extend([spack_cache_path, hash_list])
 
-        if not self.dry_run:
-            out_str = self._run_command(
-                self.spack, args, return_output=True
-            ).strip()
-            return out_str
-        else:
-            self._dry_run_print(self.spack, args)
-            return
+        out_str = self.execute(self.spack, args, return_output=True)
+
+        if out_str is None:
+            out_str = "None"
+
+        return out_str.strip()
 
     def validate_command(
         self,
@@ -1235,9 +1236,9 @@ class SpackRunner(object):
         if validation_type in regex_validations and regex:
             compiled_regex = re.compile(regex)
 
-        if not self.dry_run:
-            output = self._run_command(self.spack, args, return_output=True)
+        output = self.execute(self.spack, args, return_output=True)
 
+        if output is not None:
             logger.debug(" Validation output:")
             logger.debug(output)
             if validation_type == "empty":
@@ -1257,8 +1258,6 @@ class SpackRunner(object):
                 for line in output.split("\n"):
                     if compiled_regex.match(line):
                         self._raise_validation_error(command, validation_type)
-        else:
-            self._dry_run_print(self.spack, args)
 
     def package_definitions(self):
         """For each package in this environment, yield the path to its application.py file"""
@@ -1267,93 +1266,89 @@ class SpackRunner(object):
 
         self._check_active()
 
-        if not self.dry_run:
-            for pkg in self.env_contents:
-                args = location_args.copy()
-                args.append(pkg)
-                path = self._run_command(
-                    self.spack, args, return_output=True
-                ).strip()
+        for pkg in self.env_contents:
+            args = location_args.copy()
+            args.append(pkg)
+            path = self.execute(self.spack, args, return_output=True)
+            if path is not None:
                 yield pkg, os.path.join(path, package_def_name)
-        else:
-            self._dry_run_print(self.spack, location_args)
 
-    def _raise_validation_error(self, command, validation_type):
-        raise ValidationFailedError(
-            f'Validation of: "spack {command}" failed '
-            f' with a validation_type of "{validation_type}"'
-        )
+    def _package_dict_from_str(self, in_str):
+        """Construct a package dictionary from a comma delimited spec string
 
-    def _dry_run_print(self, executable, args):
-        logger.msg(f"DRY-RUN: would run {executable}")
-        logger.msg(f"         with args: {args}")
+        Args:
+            in_str (str): Comma delimited string from spack about a package spec.
+                          It is assumed to be of the format:
+                          {name},{version},{compiler_name},{compiler_version},{variants}
 
-    def _cmd_start(self, executable, args):
-        logger.msg("")
-        logger.msg("*******************************************")
-        logger.msg("********** Running Spack Command **********")
-        logger.msg(f"**     command: {executable}")
-        if args:
-            logger.msg(f"**     with args: {args}")
-        logger.msg("*******************************************")
-        logger.msg("")
+        Returns:
+            (dict): Dictionary representing the package information
+        """
+        parts = in_str.split(",")
 
-    def _cmd_end(self, executable, args):
-        logger.msg("")
-        logger.msg("*******************************************")
-        logger.msg("***** Finished Running Spack Command ******")
-        logger.msg("*******************************************")
-        logger.msg("")
+        info_dict = {
+            "name": "",
+            "version": "",
+            "compiler": "",
+            "compiler_version": "",
+            "variants": "",
+        }
 
-    def _run_command(self, executable, args, return_output=False):
-        active_stream = logger.active_stream()
-        active_log = logger.active_log()
-        error = False
-
-        self._cmd_start(executable, args)
-        try:
-            if active_stream is None:
-                if return_output:
-                    out_str = executable(*args, output=str)
-                else:
-                    executable(*args)
-            else:
-                if return_output:
-                    out_str = executable(
-                        *args, output=str, error=active_stream
-                    )
-                else:
-                    executable(
-                        *args, output=active_stream, error=active_stream
-                    )
-        except ProcessError as e:
-            logger.error(e)
-            error = True
-            pass
-
-        if error:
-            err = f"Error running spack command: {executable} " + " ".join(
-                args
+        if len(parts) >= 1:
+            # Remove status markers
+            name = (
+                parts[0]
+                .replace("[+]", "")
+                .replace(" - ", "")
+                .replace("[e]", "")
+                .strip()
             )
-            if active_stream is None:
-                logger.die(err)
-            else:
-                logger.error(err)
-                logger.die(f"For more details, see the log file: {active_log}")
 
-        self._cmd_end(executable, args)
+            info_dict["name"] = name
 
-        if return_output:
-            return out_str
-        return
+        if len(parts) >= 2:
+            info_dict["version"] = parts[1]
 
+        if len(parts) >= 3:
+            info_dict["compiler"] = parts[2]
 
-class RunnerError(ramble.error.RambleError):
-    """Raised when a problem occurs with a spack environment"""
+        if len(parts) >= 4:
+            info_dict["compiler_version"] = parts[3]
 
+        if len(parts) >= 5:
+            info_dict["variants"] = ",".join(parts[4:]).strip()
 
-class NoPathRunnerError(ramble.error.RambleError):
-    """Raised when a runner is used that does not have a path set"""
+        if info_dict["name"]:
+            return info_dict
+        return None
+
+    def package_provenance(self):
+        """Iterator over package information dictionaries
+
+        Call spack to determine the package information in the current
+        environment. Yield each valid package dictionary.
+
+        Yields:
+            (dict): Package information dictionary
+        """
+        find_args = [
+            "find",
+            '--format="{name},{version},{compiler.name},{compiler.version},{variants}"',
+            "-c",
+        ]
+
+        lock_file = os.path.join(self.env_path, "spack.lock")
+        if os.path.exists(lock_file):
+            all_info = self.execute(
+                self.spack, find_args, return_output=True
+            ).replace('"', "")
+
+            if all_info:
+                for info in all_info.split("\n"):
+                    info_dict = self._package_dict_from_str(info)
+
+                    if info_dict:
+                        yield info_dict
 
 
 class NoActiveEnvironmentError(RunnerError):
@@ -1363,7 +1358,3 @@ class NoActiveEnvironmentError(RunnerError):
 
 class InvalidExternalEnvironment(RunnerError):
     """Raised when an invalid external spack environment is passed in"""
-
-
-class ValidationFailedError(RunnerError):
-    """Raised when a package manager requirement was not met"""

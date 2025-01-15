@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -261,7 +261,7 @@ class ExecutableGraph(AttributeGraph):
             obj_inst (object): Object instance to extract attributes from (when necessary)
         """
         super().__init__(obj_inst)
-        self._builtin_dependencies = {}
+        self._builtin_dependencies = defaultdict(list)
         # Mapping from shorter_name -> fully qualified names
         self._builtin_aliases = defaultdict(list)
 
@@ -282,6 +282,10 @@ class ExecutableGraph(AttributeGraph):
                 )
                 self.node_definitions[builtin] = exec_node
                 self._build_builtin_aliases(builtin)
+            for builtin, blt_conf in builtins.items():
+                dependents = blt_conf["dependents"].copy()
+                for dependent in dependents:
+                    self._builtin_dependencies[dependent].append(builtin)
 
         dep_exec = None
         for exec_name in exec_order:
@@ -308,14 +312,17 @@ class ExecutableGraph(AttributeGraph):
                     blt_node = self.node_definitions[builtin]
                     super().update_graph(blt_node)
 
-                    if blt_conf["injection_method"] == "prepend":
+                    # TODO: This should include `depends_on` as well.
+                    relative = bool(blt_conf["dependents"])
+
+                    if not relative and blt_conf["injection_method"] == "prepend":
                         if head_node is not None:
                             super().update_graph(head_node, [blt_node])
 
                         if tail_prepend_builtin is not None:
                             super().update_graph(blt_node, [tail_prepend_builtin])
                         tail_prepend_builtin = blt_node
-                    elif blt_conf["injection_method"] == "append":
+                    elif not relative and blt_conf["injection_method"] == "append":
                         if tail_node is not None:
                             super().update_graph(blt_node, [tail_node])
 
@@ -332,6 +339,13 @@ class ExecutableGraph(AttributeGraph):
 
                         exec_node = self.node_definitions[builtin]
                         super().update_graph(exec_node, deps)
+
+                    if blt_conf["dependents"]:
+                        exec_node = self.node_definitions[builtin]
+                        super().update_graph(exec_node)
+                        for dependent in blt_conf["dependents"]:
+                            dependent_node = self._resolve_builtin_node(dependent)
+                            super().update_graph(dependent_node, [exec_node])
 
     def inject_executable(self, exec_name, injection_order, relative):
         """Inject an executable into the graph

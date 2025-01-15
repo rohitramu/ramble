@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -252,7 +252,7 @@ class OsuMicroBenchmarks(ExecutableApplication):
         fom_type = None
         log_file = self.expander.expand_var_name("log_file")
         if os.path.isfile(log_file):
-            with open(log_file, "r") as f:
+            with open(log_file) as f:
                 for line in f.readlines():
                     for test_fom_type in self.fom_types:
                         if self.fom_regex_headers[test_fom_type].match(line):

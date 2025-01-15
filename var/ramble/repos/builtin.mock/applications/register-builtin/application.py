@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -43,6 +43,10 @@ class RegisterBuiltin(ExecutableApplication):
     # Test disabling the typically included env_vars builtin.
     register_builtin("env_vars", required=False)
     register_builtin("test_builtin", required=True)
+    register_builtin("test_builtin_pre", dependents=["test_builtin"])
 
     def test_builtin(self):
         return ['echo "foo"']
+
+    def test_builtin_pre(self):
+        return ['echo "bar"']

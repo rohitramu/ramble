@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -16,6 +16,7 @@ import ramble.cmd.common.arguments as arguments
 import ramble.repository
 
 from ramble.util.logger import logger
+from ramble.workload import WorkloadVariable
 
 import enum
 
@@ -35,6 +36,7 @@ obj_attribute_map = {
     "archive_patterns": None,
     "success_criteria": None,
     "target_shells": "shell_support_pattern",
+    "templates": None,
     # Application specific:
     "workloads": None,
     "workload_groups": None,
@@ -53,6 +55,8 @@ obj_attribute_map = {
     "package_manager_requirements": None,
     # Package manager specific:
     "package_manager_variables": None,
+    # Workflow manager specific:
+    "workflow_manager_variables": "wm_vars",
 }
 
 
@@ -198,7 +202,6 @@ def print_single_attribute(obj, attr, verbose=False, pattern="*", format=support
     """
     internal_attr_name = _map_attr_name(attr)
     internal_attr = getattr(obj, internal_attr_name, None)
-
     if attr == "registered_phases":
         _print_phases(obj, attr, verbose, pattern, format=format)
         return
@@ -241,9 +244,14 @@ def print_single_attribute(obj, attr, verbose=False, pattern="*", format=support
                     color_name = ramble.util.colors.section_title(name)
                     color.cprint(f"{color_name}:")
                     for sub_name, sub_val in val.items():
-                        color_sub_name = ramble.util.colors.nested_1(sub_name)
+                        # Avoid showing duplicate names for variables
+                        if isinstance(sub_val, WorkloadVariable) and sub_name == sub_val.name:
+                            to_print = f"{indentation}{sub_val}"
+                        else:
+                            color_sub_name = ramble.util.colors.nested_1(sub_name)
+                            to_print = f"{indentation}{color_sub_name}: {sub_val}"
                         try:
-                            color.cprint(f"{indentation}{color_sub_name}: {sub_val}")
+                            color.cprint(to_print)
                         except color.ColorParseError:
                             escaped_sub_val = sub_val.replace("@", "@@")
                             color.cprint(f"{indentation}{color_sub_name}: {escaped_sub_val}")
@@ -259,7 +267,7 @@ def print_single_attribute(obj, attr, verbose=False, pattern="*", format=support
                 color.cprint(colified(to_print, tty=True, indent=4))
             color.cprint("")
         else:
-            color.cprint(f"{indentation}" + str(to_print))
+            color.cprint(f"{indentation}" + str(internal_attr))
 
 
 def print_attribute_header(attr, verbose=False):

@@ -1,4 +1,4 @@
-.. Copyright 2022-2024 The Ramble Authors
+.. Copyright 2022-2025 The Ramble Authors
 
    Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
    https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -18,7 +18,7 @@ This document describes each config section and its purpose. This document
 does not cover the :ref:`workspace configuration file<workspace-config>`, which has its own document.
 
 Ramble's configuration logic closely follows
-`Spack's configuration logic <https://spack.readthedocs.io/en/latest/configuration.html>`.
+`Spack's configuration logic <https://spack.readthedocs.io/en/latest/configuration.html>`_.
 
 -----------------------
 Configuration Sections:
@@ -71,15 +71,24 @@ highest) Ramble contains the following scopes:
 5. **custom**: Stored in a custom directory, specified by ``--config-scope``.
    If multiple scopes are listed on the command line, they are ordered from lowest
    to highest precedence. Settings here override all previously defined scoped.
-6. **workspace configs dir**: Stored in ``$(workspace_root)/configs``
-   generally as a ``<config_section>.yaml`` file (i.e. ``variables.yaml``). These
-   settings apply to a specific workspace, and override all previous configuration
-   scopes.
+6. **included files in workspace configuration file**: Paths referred to in the
+   file from #7 above. For more information see the
+   :ref:`documentation for including external configuration files<workspace_including_external_files>`.
 7. **workspace configuration file**: Stored in
    ``$(workspace_root)/configs/ramble.yaml``. Configuration scopes defined within
    this config file override all previously defined configuration scopes.
-8. **command line**: Configuration options defined on the command line take
+8. **workspace configs dir**: Stored in ``$(workspace_root)/configs``
+   generally as a ``<config_section>.yaml`` file (i.e. ``variables.yaml``). These
+   settings apply to a specific workspace, and override all previous configuration
+   scopes.
+9. **command line**: Configuration options defined on the command line take
    precedence over all other scopes.
+10. **application / workload / experiment scope sections**: Several
+    configuration sections can be defined within the ``application``,
+    ``workload``, and ``experiment`` portions of the ``applications``
+    configuration section. These will override all other scopes. See the
+    :ref:`application section documentation<application-config>` for more
+    details.
 
 Each configuration directory may contain several configuration files, such as
 ``config.yaml``, ``variables.yaml``, or ``modifiers.yaml``. When configurations
@@ -98,7 +107,7 @@ this command with an active workspace will include configuration sections
 defined within a workspace scope.
 
 Ramble's merging logic closely follows `Spack's configuration scope logic
-<https://spack.readthedocs.io/en/latest/configuration.html#configuration-scopes>`.
+<https://spack.readthedocs.io/en/latest/configuration.html#configuration-scopes>`_.
 
 .. _application-config:
 
@@ -167,11 +176,34 @@ The current default configuration is as follows:
           flags: ''
         global
           flags: ''
+        env_view:
+          link_type: 'symlink'
       input_cache: '$ramble/var/ramble/cache'
       workspace_dirs: '$ramble/var/ramble/workspaces'
       upload:
         type: 'BigQuery'
         uri: ''
+
+
+.. _spack-config-option:
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Spack
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``spack`` config options within the config configuration section can be used to
+customize Spack's behavior. The ``install``, ``concretize``, ``buildcache``,
+and ``env_create`` sections can be used to customize the flags passed to these
+Spack commands (with ``env_create`` being equivalent to ``spack env create``).
+
+The ``global`` section is used to define flags that should be passed to
+``spack`` directly, as in:
+``spack {flags} {subcommand}...``
+
+The ``env_view`` section is used to customize the `spack environment views
+<https://spack.readthedocs.io/en/latest/environments.html#environment-views>`_
+that Ramble creates. Currently, the only accepted option within this section is
+``link_type`` which can take any value supported via Spack.
 
 .. _upload-config-option:
 
@@ -289,15 +321,46 @@ The format of this config section is as follows:
 .. code-block:: yaml
 
   formatted_executables:
+    command_name:
+      [indentation: integer number of indentation spaces]
+      [prefix: prefix string]
+      [join_separator: string to use to join commands]
+      [commands: [list, of, commands]]
+
+In the above, the ``indentation`` attribute is an integer that will be used to
+inject spaces at the beginning of each line. The ``prefix`` attribute is used
+to define a prefix (after the indentation) to add to each line of the formatted
+executable. The ``join_separator`` attribute defines the string that will be
+used to join independent lines of the formatted executable. The ``commands``
+attribute is a list of strings that will be re-formatted using the definitions
+in the rest of the formatted executable definition. Each entry will be split
+across new line characters before reformatting.
+
+The default values for the attributes are:
+
+.. code-block:: yaml
+
+  formatted_executables:
+    command_name:
+      indentation: 0
+      prefix: ''
+      join_separator: '\n'
+      commands:
+      - '{unformatted_command}'
+
+A more complete exampe of using formatted executables can be seen below:
+
+.. code-block:: yaml
+
+  formatted_executables:
     new_command:
       indentation: 8
       prefix: '- '
       join_separator: '\n'
 
-
 The above example defines a new variable named ``new_command`` which will be a
 new-line (``\n``) demlimited list of executables, where each executable is
-prefixed with ``- `` and is indented 8 space characters.
+prefixed with ``'- '`` and is indented 8 space characters.
 
 The default configuration files define one formatted executable named
 ``command``. Its definition can be seen with:
@@ -449,6 +512,9 @@ experiments ramble generates. Its format is as follows:
       - list of
       - executables to apply
       - modifier to
+
+**NOTE**: Every modifier has a ``disabled`` mode by default that can be set
+(only explicitly) to turn off all of the modifier's functionality.
 
 
 .. _repos-config:

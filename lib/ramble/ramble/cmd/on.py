@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -6,6 +6,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+import ramble.config
 import ramble.workspace
 import ramble.expander
 import ramble.pipeline
@@ -58,8 +59,9 @@ def ramble_on(args):
         tags=args.filter_tags,
     )
 
-    suppress_per_experiment_prints = not args.per_experiment_prints_on
-    suppress_run_header = args.run_header_off
+    debug = ramble.config.get("config:debug")
+    suppress_per_experiment_prints = not debug and not args.per_experiment_prints_on
+    suppress_run_header = not debug and args.run_header_off
 
     pipeline_cls = ramble.pipeline.pipeline_class(current_pipeline)
     pipeline = pipeline_cls(
@@ -70,7 +72,7 @@ def ramble_on(args):
         suppress_run_header=suppress_run_header,
     )
 
-    with ws.write_transaction():
+    with ws.read_transaction():
         pipeline.run()
 
 

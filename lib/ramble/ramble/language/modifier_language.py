@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -27,9 +27,20 @@ def mode(name, description, **kwargs):
     """Define a new mode for this modifier.
 
     Modes allow a modifier to bundle a set of modifications together.
+
+    NOTE: A mode 'disabled' is defined by default for all modifiers.
+
+    Args:
+        name (str): Name of the mode to define
+        description (str): Description of the new mode
     """
 
     def _execute_mode(mod):
+        if name in mod.modes:
+            raise DirectiveError(
+                f"mode directive given an already defined mode for modifier "
+                f"{mod.name}. Provided mode is {name}."
+            )
         mod.modes[name] = {"description": description}
 
     return _execute_mode
@@ -39,7 +50,11 @@ def mode(name, description, **kwargs):
 def default_mode(name, **kwargs):
     """Define a default mode for this modifier.
 
-    The default mode will be used if modifier mode is not specified in an experiment."""
+    The default mode will be used if modifier mode is not specified in an experiment.
+
+    Args:
+        name (str): Name of mode to be used as default
+    """
 
     def _execute_default_mode(mod):
         if name not in mod.modes:
@@ -47,32 +62,38 @@ def default_mode(name, **kwargs):
                 f"default_mode directive given an invalid mode for modifier "
                 f"{mod.name}. Valid modes are {str(list(mod.modes.keys()))}"
             )
+
+        if name == "disabled":
+            raise DirectiveError(
+                f"default_mode directive given an invalid mode for modifier "
+                f"{mod.name}. The disabled mode cannot be set as the default mode"
+            )
         mod._default_usage_mode = name
 
     return _execute_default_mode
 
 
 @modifier_directive("variable_modifications")
-def variable_modification(name, modification, method="set", mode=None, modes=None, **kwargs):
+def variable_modification(
+    name, modification, method="set", mode=None, modes=None, separator=" ", **kwargs
+):
     """Define a new variable modification for a mode in this modifier.
 
     A variable modification will apply a change to a defined variable within an experiment.
 
     Args:
-        name: The variable to modify
-        modification: The value to modify 'name' with
-        method: How the modification should be applied
-        mode: Single mode to group this modification into
-        modes: List of modes to group this modification into
+        name (str): The variable to modify
+        modification (str): The value to modify 'name' with
+        method (str): How the modification should be applied
+        mode (str): Single mode to group this modification into
+        modes (str): List of modes to group this modification into
+        separator (str): Optional separator to use when modifying with 'append' or
+                         'prepend' methods.
 
     Supported values are 'append', 'prepend', and 'set':
-
-      'append' will add the modification to the end of 'name'
-
-      'prepend' will add the modification to the beginning of 'name'
-
-      'set' (Default) will overwrite 'name' with the modification
-
+        'append' will add the modification to the end of 'name'
+        'prepend' will add the modification to the beginning of 'name'
+        'set' (Default) will overwrite 'name' with the modification
     """
 
     def _execute_variable_modification(mod):
@@ -94,6 +115,7 @@ def variable_modification(name, modification, method="set", mode=None, modes=Non
             mod.variable_modifications[mode_name][name] = {
                 "modification": modification,
                 "method": method,
+                "separator": separator,
             }
 
     return _execute_variable_modification
@@ -132,9 +154,15 @@ def executable_modifier(name):
     Executable modifiers are allowed to modify the input executable in place.
     Executable modifiers must return two lists of executables.
 
-    Returns:
-      prepend_execs: List of executables to inject before the base executable
-      append_execs: List of executables to inject after the base executable
+    Args:
+        name (str): Name of executable modifier to use. Should be the name of a
+                    class method.
+
+    Each executable modifier needs to return:
+      prepend_execs (list(CommandExecutable)): List of executables to inject
+                                               before the base executable
+      append_execs (list(CommandExecutable)): List of executables to inject
+                                              after the base executable
     """
 
     def _executable_modifier(mod):
@@ -151,22 +179,20 @@ def env_var_modification(name, modification=None, method="set", mode=None, modes
     variables within the application instance.
 
     Args:
-        name: The name of the environment variable that will be modified
-        modification: The value of the modification
-        method: The method of the modification.
-        mode: Name of mode this env_var_modification should apply in
-        modes: List of mode names this env_var_modification should apply in
+        name (str): The name of the environment variable that will be modified
+        modification (str): The value of the modification
+        method (str): The method of the modification.
+        mode (str): Name of mode this env_var_modification should apply in
+        modes (list(str)): List of mode names this env_var_modification should apply in
 
     Supported values for method are:
-    set: Defines the variable to equal the modification value
-
-    unset: Removes any definition of the variable from the environment
-
-    prepend: Prepends the modification to the beginning of the variable.
-    Always uses the separator ':'
-
-    append: Appends the modification value to the end of the value. Allows a
-    keyword argument of 'separator' to define the delimiter between values.
+        set: Defines the variable to equal the modification value
+        unset: Removes any definition of the variable from the environment
+        prepend: Prepends the modification to the beginning of the variable.
+                 Always uses the separator ':'
+        append: Appends the modification value to the end of the value. Allows a
+                keyword argument of 'separator' to define the delimiter between
+                values.
 
     """
 
@@ -230,19 +256,25 @@ def env_var_modification(name, modification=None, method="set", mode=None, modes
 
 
 @modifier_directive("required_vars")
-def required_variable(var: str, results_level="variable"):
-    """Mark a var as being required
+def required_variable(var: str, results_level="variable", modes=None, description=None):
+    """Mark a variable as being required by this modifier
 
     Args:
-        var: Value to mark as required
-        results_level (str): 'variable' or 'key'. If 'key' variable is promoted to
+        var (str): Variable name to mark as required
+        results_level (str): 'variable' or 'key'. If 'key', variable is promoted to
                              a key within JSON or YAML formatted results.
+        modes (list[str] | None): modes that the required check should be applied. The
+                            default None means apply to all modes.
+        description (str | None): Description of the required variable.
     """
 
     def _mark_required_var(mod):
         mod.required_vars[var] = {
             "type": ramble.keywords.key_type.required,
             "level": ramble.keywords.output_level.variable,
+            # Extra prop that's only used for filtering
+            "modes": set(modes) if modes is not None else None,
+            "description": description,
         }
 
     return _mark_required_var
@@ -257,6 +289,7 @@ def modifier_variable(
     mode: Optional[str] = None,
     modes: Optional[list] = None,
     expandable: bool = True,
+    track_used: bool = False,
     **kwargs,
 ):
     """Define a variable for this modifier
@@ -269,6 +302,9 @@ def modifier_variable(
         mode (str): Single mode this variable is used in
         modes (list): List of modes this variable is used in
         expandable (bool): True if the variable should be expanded, False if not.
+        track_used (bool): True if the variable should be tracked as used,
+                           False if not. Can help with allowing lists without vecotizing
+                           experiments.
     """
 
     def _define_modifier_variable(mod):
@@ -288,6 +324,7 @@ def modifier_variable(
                 description=description,
                 values=values,
                 expandable=expandable,
+                **kwargs,
             )
 
     return _define_modifier_variable
@@ -305,15 +342,19 @@ def package_manager_requirement(
     """Define a requirement when this modifier is used in an experiment with a
     package manager.
 
+    This allows modifiers to inject additional requirements on packages
+    managers. These can be used to ensure package manager commands return
+    specific values.
+
     Args:
-        command: Package manager command to execute, when evaluating the requirement
-        validation_type: Type of validation to perform on output of command.
+        command (str): Package manager command to execute, when evaluating the requirement
+        validation_type (str): Type of validation to perform on output of command.
                          Valid types are: 'empty', 'not_empty', 'contains_regex',
                          'does_not_contain_regex'
-        modes: List of usage modes this requirement should apply to
-        regex: Regular expression to use when validation_type is either 'contains_regex'
+        modes (list(str)): List of usage modes this requirement should apply to
+        regex (str): Regular expression to use when validation_type is either 'contains_regex'
                or 'does_no_contain_regex'
-        package_manager: Name of the package manager this requirement applies to
+        package_manager (str): Name of the package manager this requirement applies to
     """
 
     def _new_package_manager_requirement(mod):

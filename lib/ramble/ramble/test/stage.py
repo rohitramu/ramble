@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -567,8 +567,12 @@ class TestStage:
 
     def test_ensure_one_stage_entry(self, mock_stage_archive):
         archive = mock_stage_archive()
+        # If this is the only/first test that runs against the `self.stage_name`, then
+        # a stage lock file will be present under the `stage_path` and cause the
+        # `_ensure_one_stage_entry` to fail. Set lock=False to prevent creating the lock,
+        # as the focus of this test is to verify the fetch behavior.
         with InputStage(
-            archive.url, name=self.stage_name, path=archive.stage_path, keep=False
+            archive.url, name=self.stage_name, path=archive.stage_path, keep=False, lock=False
         ) as stage:
             stage.fetch()
             stage_path = stage.path

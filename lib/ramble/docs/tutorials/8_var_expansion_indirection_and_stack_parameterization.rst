@@ -1,4 +1,4 @@
-.. Copyright 2022-2024 The Ramble Authors
+.. Copyright 2022-2025 The Ramble Authors
 
    Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
    https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -213,7 +213,7 @@ resulting configuration might look like the following:
 system if you require additional arguments. To be able to execute these on your
 system, make sure you modify these appropriately.
 
-At this point, you have described the 12 experiments you want to run, however
+At this point, you have described the 8 experiments you want to run, however
 they are still not completely defined. Running:
 
 .. code-block:: console

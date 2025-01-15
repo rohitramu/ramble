@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -22,12 +22,6 @@ import ramble.util.stats
         (ramble.util.stats.StatsVar(), [3], "s", ("NA", "", "summary::variance")),
         (ramble.util.stats.StatsStdev(), [-2, 0, 2, 5.5], "s", (3.2, "s", "summary::stdev")),
         (ramble.util.stats.StatsStdev(), [3], "s", ("NA", "", "summary::stdev")),
-        (
-            ramble.util.stats.StatsCountValues(),
-            [-2, 0, 2, 5.5],
-            "s",
-            (4, "repeats", "summary::n_successful_repeats"),
-        ),
         (ramble.util.stats.StatsCoefficientOfVariation(), [3], "s", ("NA", "", "summary::cv")),
         (ramble.util.stats.StatsCoefficientOfVariation(), [3, -3], "s", ("NA", "", "summary::cv")),
         (

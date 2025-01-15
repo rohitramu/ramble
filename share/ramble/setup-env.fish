@@ -6,7 +6,7 @@
 
 #################################################################################
 #
-# This file is part of RAmble and sets up the ramble environment for the friendly
+# This file is part of Ramble and sets up the ramble environment for the friendly
 # interactive shell (fish). This includes module support, and it also puts ramble
 # in your path. The script also checks that at least module support exists, and
 # provides suggestions if it doesn't. Source it like this:
@@ -634,6 +634,17 @@ end
 # Figure out where this file is. Below code only needs to work in fish
 #
 set -l rmb_source_file (status -f)  # name of current file
+
+#
+# Identify and lock the python interpreter
+#
+for cmd in "$RAMBLE_PYTHON" python3 python python2
+    set -l _rmb_python (command -v "$cmd")
+    if test $status -eq 0
+        set -x RAMBLE_PYTHON $_rmb_python
+        break
+    end
+end
 
 
 

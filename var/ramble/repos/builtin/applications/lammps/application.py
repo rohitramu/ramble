@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -306,22 +306,66 @@ class Lammps(ExecutableApplication):
         fom_regex=r"Total wall time.*\s+(?P<walltime>[0-9:]+)",
         group_name="walltime",
         units="",
+        fom_type=FomType.TIME,
     )
     figure_of_merit(
         "Nanoseconds per day",
         fom_regex=r"Performance.*\s+(?P<nspd>[0-9\.]+) (ns|tau)/day",
         group_name="nspd",
         units="ns/day",
+        fom_type=FomType.THROUGHPUT,
     )
     figure_of_merit(
         "Hours per nanosecond",
         fom_regex=r"Performance.*\s+(?P<hpns>[0-9\.]+) hours/ns",
         group_name="hpns",
-        units="timesteps/s",
+        units="hours/ns",
+        fom_type=FomType.TIME,
     )
     figure_of_merit(
         "Timesteps per second",
         fom_regex=r"Performance.*\s+(?P<tsps>[0-9\.]+) timesteps/s",
         group_name="tsps",
-        units="hours/ns",
+        units="timesteps/s",
+        fom_type=FomType.THROUGHPUT,
     )
+
+    for func_name in ["Pair", "Neigh", "Comm", "Output", "Modifier"]:
+        func_time_regex = (
+            func_name
+            + r"\s+\|\s+(?P<min_time>\S+)\s+\|\s+(?P<avg_time>\S+)\s+\|\s+(?P<max_time>\S+)\s+\|\s+(?P<avg_var>\S+)\s+\|\s+(?P<total_pct>\S+)"
+        )
+        figure_of_merit(
+            f"{func_name} min time",
+            fom_regex=func_time_regex,
+            group_name="min_time",
+            units="s",
+        )
+
+        figure_of_merit(
+            f"{func_name} avg time",
+            fom_regex=func_time_regex,
+            group_name="avg_time",
+            units="s",
+        )
+
+        figure_of_merit(
+            f"{func_name} max time",
+            fom_regex=func_time_regex,
+            group_name="max_time",
+            units="s",
+        )
+
+        figure_of_merit(
+            f"{func_name} avg. variance",
+            fom_regex=func_time_regex,
+            group_name="avg_var",
+            units="",
+        )
+
+        figure_of_merit(
+            f"{func_name} percent of runtime",
+            fom_regex=func_time_regex,
+            group_name="total_pct",
+            units="%",
+        )

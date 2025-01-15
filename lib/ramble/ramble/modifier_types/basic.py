@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -13,8 +13,8 @@ from ramble.modifier import ModifierBase
 class BasicModifier(ModifierBase):
     """Specialized class for basic modifiers.
 
-    This class can be used to set up a modifier that does not need additional
-    software to be installed.
+    This class can be used to set up a modifier that can be composed into
+    experiment definitions.
     """
 
     modifier_class = "BasicModifier"

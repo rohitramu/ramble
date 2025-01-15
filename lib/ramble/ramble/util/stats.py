@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -113,16 +113,6 @@ class StatsCoefficientOfVariation(StatsBase):
         return ""
 
 
-class StatsCountValues(StatsBase):
-    name = "n_successful_repeats"
-
-    def compute(self, values):
-        return len(values)
-
-    def get_unit(self, unit):
-        return "repeats"
-
-
 all_stats = [
     StatsMin(),
     StatsMax(),
@@ -131,5 +121,4 @@ all_stats = [
     StatsVar(),
     StatsStdev(),
     StatsCoefficientOfVariation(),
-    StatsCountValues(),
 ]

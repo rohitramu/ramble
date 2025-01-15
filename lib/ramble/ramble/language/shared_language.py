@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -6,10 +6,13 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+from typing import Optional
+
 import ramble.language.language_base
 import ramble.language.language_helpers
 import ramble.success_criteria
 from ramble.util.logger import logger
+from ramble.util.foms import FomType
 
 
 """This module contains directives directives that are shared between multiple object types
@@ -21,7 +24,7 @@ definition to modify the object, for example:
 
       class Gromacs(ExecutableApplication):
           # Required package directive
-          required_package("zlib", package_manager="spack")
+          required_package("gromacs", package_manager="spack")
 
 In the above example, "required_package" is a ramble directive
 
@@ -48,7 +51,7 @@ def archive_pattern(pattern):
     is being performed.
 
     Args:
-      pattern: Pattern that refers to files to archive
+      pattern (str): Pattern that refers to files to archive
     """
 
     def _execute_archive_pattern(obj):
@@ -64,11 +67,11 @@ def figure_of_merit_context(name, regex, output_format):
     Defines a new context to contain figures of merit.
 
     Args:
-      name: High level name of the context. Can be referred to in
-            the figure of merit
-      regex: Regular expression, using group names, to match a context.
-      output_format: String, using python keywords {group_name} to extract
-                     group names from context regular expression.
+      name (str): High level name of the context. Can be referred to in
+                  the figure of merit
+      regex (str): Regular expression, using group names, to match a context.
+      output_format (str): String, using python keywords {group_name} to extract
+                           group names from context regular expression.
     """
 
     def _execute_figure_of_merit_context(obj):
@@ -78,17 +81,29 @@ def figure_of_merit_context(name, regex, output_format):
 
 
 @shared_directive("figures_of_merit")
-def figure_of_merit(name, fom_regex, group_name, log_file="{log_file}", units="", contexts=[]):
+def figure_of_merit(
+    name,
+    fom_regex,
+    group_name,
+    log_file="{log_file}",
+    units="",
+    contexts=[],
+    fom_type: FomType = FomType.UNDEFINED,
+):
     """Adds a figure of merit to track for this object
 
     Defines a new figure of merit.
 
     Args:
-      name: High level name of the figure of merit
-      log_file: File the figure of merit can be extracted from
-      fom_regex: A regular expression using named groups to extract the FOM
-      group_name: The name of the group that the FOM should be pulled from
-      units: The units associated with the FOM
+      name (str): High level name of the figure of merit
+      log_file (str): File the figure of merit can be extracted from
+      fom_regex (str): A regular expression using named groups to extract the FOM
+      group_name (str): The name of the group that the FOM should be pulled from
+      units (str): The units associated with the FOM
+      contexts (list(str)): List of contexts (defined by
+                            figure_of_merit_context) this figure of merit
+                            should exist in.
+      fom_type: The type of figure of merit
     """
 
     def _execute_figure_of_merit(obj):
@@ -98,6 +113,7 @@ def figure_of_merit(name, fom_regex, group_name, log_file="{log_file}", units=""
             "group_name": group_name,
             "units": units,
             "contexts": contexts,
+            "fom_type": fom_type,
         }
 
     return _execute_figure_of_merit
@@ -208,7 +224,14 @@ def required_package(name, package_manager="*"):
 
 @shared_directive("success_criteria")
 def success_criteria(
-    name, mode, match=None, file="{log_file}", fom_name=None, fom_context="null", formula=None
+    name,
+    mode,
+    match=None,
+    file="{log_file}",
+    fom_name=None,
+    fom_context="null",
+    formula=None,
+    anti_match=None,
 ):
     """Defines a success criteria used by experiments of this object
 
@@ -216,19 +239,21 @@ def success_criteria(
 
     These will be checked during the analyze step to see if a job exited properly.
 
-    Arguments:
-      name: The name of this success criteria
-      mode: The type of success criteria that will be validated
-            Valid values are: 'string', 'application_function', and 'fom_comparison'
-      match: For mode='string'. Value to check indicate success (if found, it
-             would mark success)
-      file: For mode='string'. File success criteria should be located in
-      fom_name: For mode='fom_comparison'. Name of fom for a criteria.
-                Accepts globbing.
-      fom_context: For mode='fom_comparison'. Context the fom is contained
-                   in. Accepts globbing.
-      formula: For mode='fom_comparison'. Formula to use to evaluate success.
-               '{value}' keyword is set as the value of the FOM.
+    Args:
+      name (str): The name of this success criteria
+      mode (str): The type of success criteria that will be validated
+                  Valid values are: 'string', 'application_function', and 'fom_comparison'
+      match (str): For mode='string'. Value to check indicate success (if found, it
+                   would mark success)
+      file (str): For mode='string'. File success criteria should be located in
+      fom_name (str): For mode='fom_comparison'. Name of fom for a criteria.
+                      Accepts globbing.
+      fom_context (str): For mode='fom_comparison'. Context the fom is contained
+                         in. Accepts globbing.
+      formula (str): For mode='fom_comparison'. Formula to use to evaluate success.
+                     '{value}' keyword is set as the value of the FOM.
+      anti_match (str): For mode='string'. Value to check indicate failure.
+                        This setting and `match` are mutually exclusive.
     """
 
     def _execute_success_criteria(obj):
@@ -239,6 +264,7 @@ def success_criteria(
         obj.success_criteria[name] = {
             "mode": mode,
             "match": match,
+            "anti_match": anti_match,
             "file": file,
             "fom_name": fom_name,
             "fom_context": fom_context,
@@ -249,7 +275,9 @@ def success_criteria(
 
 
 @shared_directive("builtins")
-def register_builtin(name, required=True, injection_method="prepend", depends_on=[]):
+def register_builtin(
+    name, required=True, injection_method="prepend", depends_on=[], dependents=[]
+):
     """Register a builtin
 
     Builtins are methods that return lists of strings. These methods represent
@@ -284,7 +312,7 @@ def register_builtin(name, required=True, injection_method="prepend", depends_on
     The 'required' attribute marks a builtin as required for all workloads. This
     will ensure the builtin is added to the workload if it is not explicitly
     added. If required builtins are not explicitly added to a workload, they
-    are injected  into the list of executables, based on the injection_method
+    are injected into the list of executables, based on the injection_method
     attribute.
 
     The 'injection_method' attribute controls where the builtin will be
@@ -292,6 +320,16 @@ def register_builtin(name, required=True, injection_method="prepend", depends_on
     Options are:
     - 'prepend' -- This builtin will be injected at the beginning of the executable list
     - 'append' -- This builtin will be injected at the end of the executable list
+
+    Args:
+        name (str): Name of builtin (should be the name of a class method) to register
+        required (boolean): Whether the builtin will be auto-injected or not
+        injection_method (str): The method of injecting the builtin. Can be
+                                'prepend' or 'append'
+        depends_on (list(str)): The names of builtins this builtin depends on
+                                (and must execute after).
+        dependents (list(str)): The names of builtins that should come
+                                after the current one.
     """
     supported_injection_methods = ["prepend", "append"]
 
@@ -310,6 +348,7 @@ def register_builtin(name, required=True, injection_method="prepend", depends_on
             "required": required,
             "injection_method": injection_method,
             "depends_on": depends_on.copy(),
+            "dependents": dependents.copy(),
         }
 
     return _store_builtin
@@ -329,10 +368,10 @@ def register_phase(name, pipeline=None, run_before=[], run_after=[]):
     instance of a phase will show up in the resulting dependency list for a phase.
 
     Args:
-    - name: The name of the phase. Phases are functions named '_<phase>'.
-    - pipeline: The name of the pipeline this phase should be registered into.
-    - run_before: A list of phase names this phase should run before
-    - run_after: A list of phase names this phase should run after
+      name (str): The name of the phase. Phases are functions named '_<phase>'.
+      pipeline (str): The name of the pipeline this phase should be registered into.
+      run_before (list(str)): A list of phase names this phase should run before
+      run_after (list(str)): A list of phase names this phase should run after
     """
 
     def _execute_register_phase(obj):
@@ -393,7 +432,8 @@ def maintainers(*names: str):
     """Add a new maintainer directive, to specify maintainers in a declarative way.
 
     Args:
-        names: GitHub username for the maintainer
+        names (str(s)): GitHub username(s) for the maintainer. Can provide
+                        multiple names as separate arguments.
     """
 
     def _execute_maintainer(obj):
@@ -409,7 +449,8 @@ def tags(*values: str):
     """Add a new tag directive, to specify tags in a declarative way.
 
     Args:
-        values: Value to mark as a tag
+        values (str(s)): Values to mark as a tag. Can provide multiple values
+                         as separate arguments.
     """
 
     def _execute_tag(obj):
@@ -428,7 +469,8 @@ def target_shells(shell_support_pattern=None):
     then it assumes all shells are supported.
 
     Args:
-        shell_support_pattern: The glob pattern that is used to match with the configured shell
+        shell_support_pattern (str): The glob pattern that is used to match
+                                     with the configured shell
     """
 
     def _execute_target_shells(obj):
@@ -436,3 +478,53 @@ def target_shells(shell_support_pattern=None):
             obj.shell_support_pattern = shell_support_pattern
 
     return _execute_target_shells
+
+
+@shared_directive("templates")
+def register_template(
+    name: str,
+    src_name: str,
+    dest_name: str,
+    define_var: bool = True,
+    extra_vars: Optional[dict] = None,
+    extra_vars_func: Optional[str] = None,
+    output_perm=None,
+):
+    """Directive to define an object-specific template to be rendered into experiment run_dir.
+
+    For instance, `register_template(name="foo", src_name="foo.tpl", dest_name="foo.sh")`
+    expects a "foo.tpl" template defined alongside the object source, and uses that to
+    render a file under "{experiment_run_dir}/foo.sh". The rendered path can also be
+    referenced with the `foo` variable name.
+
+    Args:
+        name: The name of the template. It is also used as the variable name
+              that an experiment can use to reference the rendered path, if
+              `define_var` is true.
+        src_name: The leaf name of the template. This is used to locate the
+                  the template under the containing directory of the object.
+        dest_name: The leaf name of the rendered output under the experiment
+                   run directory.
+        define_var: Controls if a variable named `name` should be defined.
+        extra_vars: If present, the variable dict is used as extra variables to
+                    render the template.
+        extra_vars_func: If present, the name of the function to call to return
+                         a dict of extra variables used to render the template.
+                         This option is combined together with and takes precedence
+                         over `extra_vars`, if both are present.
+        output_perm: The chmod mask for the rendered output file.
+    """
+
+    def _define_template(obj):
+        var_name = name if define_var else None
+        extra_vars_func_name = f"_{extra_vars_func}" if extra_vars_func is not None else None
+        obj.templates[name] = {
+            "src_name": src_name,
+            "dest_name": dest_name,
+            "var_name": var_name,
+            "extra_vars": extra_vars,
+            "extra_vars_func_name": extra_vars_func_name,
+            "output_perm": output_perm,
+        }
+
+    return _define_template

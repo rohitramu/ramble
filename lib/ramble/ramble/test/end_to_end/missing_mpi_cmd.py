@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -28,6 +28,8 @@ workspace = RambleCommand("workspace")
 def test_missing_mpi_cmd():
     test_config = """
 ramble:
+  variants:
+    package_manager: None
   variables:
     mpi_command: ''
     batch_submit: 'batch_submit {execute_experiment}'
@@ -44,9 +46,6 @@ ramble:
             single-node-test:
               variables:
                 n_nodes: '1'
-  spack:
-    packages: {}
-    environments: {}
 """
     workspace_name = "test-missing-mpi-cmd"
     ws = ramble.workspace.create(workspace_name)

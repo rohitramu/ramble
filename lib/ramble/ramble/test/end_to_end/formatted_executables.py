@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -36,6 +36,11 @@ ramble:
       prefix: 'from_ws '
       indentation: 9
       join_separator: ';'
+    ws_test_def:
+      prefix: 'test_from_ws '
+      indentation: 2
+      commands:
+      - '{mpi_command} test'
   applications:
     basic:
       formatted_executables:
@@ -74,6 +79,7 @@ ramble:
             f.write("{app_exec_def}\n")
             f.write("{wl_exec_def}\n")
             f.write("{exp_exec_def}\n")
+            f.write("{ws_test_def}\n")
         ws._re_read()
 
         workspace("setup", "--dry-run", global_args=["-w", workspace_name])
@@ -88,6 +94,7 @@ ramble:
             assert ";" + " " * 9 + "from_ws echo" in data
             assert "\n" + " " * 11 + "from_wl echo" in data
             assert "\n" + " " * 10 + "from_exp echo" in data
+            assert "\n" + " " * 2 + "test_from_ws mpirun -n 16 -ppn 16 test" in data
 
 
 def test_redefined_executable_errors(

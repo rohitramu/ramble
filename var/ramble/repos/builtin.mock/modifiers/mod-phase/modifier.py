@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -19,10 +19,12 @@ class ModPhase(BasicModifier):
 
     mode("test", description="This is a test mode")
 
-    register_phase("first_phase", pipeline="setup", run_before=["get_inputs"])
+    register_phase(
+        "mod_phase", pipeline="setup", run_before=["make_experiments"]
+    )
 
-    def _first_phase(self, workspace, app_inst=None):
-        logger.all_msg("Inside a phase: first_phase")
+    def _mod_phase(self, workspace, app_inst=None):
+        logger.all_msg("Inside a phase: mod_phase")
 
     register_phase(
         "after_make_experiments",

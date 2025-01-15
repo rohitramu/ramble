@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -121,6 +121,21 @@ class NcclTests(ExecutableApplication):
         "additional_args",
         default="-b {begin_message_size} -e {end_message_size} -f {message_size_factor} -g {num_gpus_per_task} -w {warmup_iters} --iters {num_iters} -c {result_check}",
         description="Arguments for all reduce",
+        workloads=all_workloads,
+    )
+
+    workload_variable(
+        "nccl_tests_split_mask",
+        default="",
+        description='How NCCL communicators should be split, if at all. "0x7" for rail-aligned, "0x0" for world-level.',
+        workloads=all_workloads,
+        expandable=False,
+    )
+
+    environment_variable(
+        "NCCL_TESTS_SPLIT_MASK",
+        "{nccl_tests_split_mask}",
+        'How NCCL communicators should be split, if at all. "0x7" for rail-aligned, "0x0" for world-level.',
         workloads=all_workloads,
     )
 

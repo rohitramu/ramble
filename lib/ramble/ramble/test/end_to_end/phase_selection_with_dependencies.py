@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -33,6 +33,7 @@ def enable_verbose():
     llnl.util.tty._verbose = old_setting
 
 
+@pytest.mark.long
 def test_workspace_phase_selection_with_dependencies(
     mutable_config, mutable_mock_workspace_path, enable_verbose
 ):

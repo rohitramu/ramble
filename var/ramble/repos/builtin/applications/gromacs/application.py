@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -25,10 +25,16 @@ class Gromacs(ExecutableApplication):
         "impi2018", pkg_spec="intel-mpi@2018.4.274", package_manager="spack*"
     )
     software_spec(
-        "gromacs",
+        "spack_gromacs",
         pkg_spec="gromacs@2020.5",
         compiler="gcc9",
         package_manager="spack*",
+    )
+
+    software_spec(
+        "eessi_gromacs",
+        pkg_spec="GROMACS/2024.1-foss-2023b",
+        package_manager="eessi",
     )
 
     executable(
@@ -45,7 +51,7 @@ class Gromacs(ExecutableApplication):
         "execute-gen",
         "{mdrun} {notunepme} -dlb {dlb} "
         + "{verbose} -resetstep {resetstep} -noconfout -nsteps {nsteps} "
-        + "-s exp_input.tpr",
+        + "-s exp_input.tpr {additional_args}",
         use_mpi=True,
         output_capture=OUTPUT_CAPTURE.ALL,
     )
@@ -53,7 +59,7 @@ class Gromacs(ExecutableApplication):
         "execute",
         "{mdrun} {notunepme} -dlb {dlb} "
         + "{verbose} -resetstep {resetstep} -noconfout -nsteps {nsteps} "
-        + "-s {input_path}",
+        + "-s {input_path} {additional_args}",
         use_mpi=True,
         output_capture=OUTPUT_CAPTURE.ALL,
     )
@@ -163,72 +169,81 @@ class Gromacs(ExecutableApplication):
         input="JCP_benchmarks",
     )
 
-    all_workloads = [
-        "water_gmx50",
-        "water_bare",
-        "lignocellulose",
-        "hecbiosim",
-        "benchpep",
-        "benchpep_h",
-        "benchmem",
-        "benchrib",
-        "stmv_rf",
-        "stmv_pme",
-        "rnase_cubic",
-        "ion_channel",
-        "adh_dodec",
-    ]
+    workload_group(
+        "all_workloads",
+        workloads=[
+            "water_gmx50",
+            "water_bare",
+            "lignocellulose",
+            "hecbiosim",
+            "benchpep",
+            "benchpep_h",
+            "benchmem",
+            "benchrib",
+            "stmv_rf",
+            "stmv_pme",
+            "rnase_cubic",
+            "ion_channel",
+            "adh_dodec",
+        ],
+    )
 
+    workload_variable(
+        "additional_args",
+        default="",
+        description="Additiaonl Exec Args",
+        workload_group="all_workloads",
+    )
     workload_variable(
         "gmx",
         default="gmx_mpi",
         description="Name of the gromacs binary",
-        workloads=all_workloads,
+        workload_group="all_workloads",
     )
     workload_variable(
         "grompp",
         default="{gmx} grompp",
         description="How to run grompp",
-        workloads=all_workloads,
+        workload_group="all_workloads",
     )
     workload_variable(
         "mdrun",
         default="{gmx} mdrun",
         description="How to run mdrun",
-        workloads=all_workloads,
+        workload_group="all_workloads",
     )
     workload_variable(
         "nsteps",
         default=str(20000),
         description="Simulation steps",
-        workloads=all_workloads,
+        workload_group="all_workloads",
     )
     workload_variable(
         "resetstep",
         default="{str(int(0.9*{nsteps}))}",
         description="Reset performance counters at this step",
-        workloads=all_workloads,
+        workload_group="all_workloads",
     )
     workload_variable(
         "verbose",
         default="",
         values=["", "-v"],
         description="Set to empty string to run without verbose mode",
-        workloads=all_workloads,
+        workload_group="all_workloads",
     )
     workload_variable(
         "notunepme",
         default="-notunepme",
         values=["", "-notunepme"],
         description="Whether to set -notunepme for mdrun",
-        workloads=all_workloads,
+        workload_group="all_workloads",
     )
     workload_variable(
         "dlb",
         default="yes",
-        values=["yes", "no"],
+        values=["yes", "no", "auto"],
         description="Whether to use dynamic load balancing for mdrun",
-        workloads=all_workloads,
+        workload_group="all_workloads",
     )
 
     workload_variable(
@@ -380,6 +395,7 @@ class Gromacs(ExecutableApplication):
         fom_regex=r"\s+Time:\s+(?P<core_time>[0-9]+\.[0-9]+).*",
         group_name="core_time",
         units="s",
+        fom_type=FomType.TIME,
     )
 
     figure_of_merit(
@@ -389,6 +405,7 @@ class Gromacs(ExecutableApplication):
         + r"(?P<wall_time>[0-9]+\.[0-9]+).*",
         group_name="wall_time",
         units="s",
+        fom_type=FomType.TIME,
     )
 
     figure_of_merit(
@@ -398,6 +415,7 @@ class Gromacs(ExecutableApplication):
         + r"(?P<perc_core_time>[0-9]+\.[0-9]+).*",
         group_name="perc_core_time",
         units="%",
+        fom_type=FomType.MEASURE,
     )
 
     figure_of_merit(
@@ -406,6 +424,7 @@ class Gromacs(ExecutableApplication):
         fom_regex=r"Performance:\s+" + r"(?P<ns_per_day>[0-9]+\.[0-9]+).*",
         group_name="ns_per_day",
         units="ns/day",
+        fom_type=FomType.THROUGHPUT,
     )
 
     figure_of_merit(
@@ -415,4 +434,5 @@ class Gromacs(ExecutableApplication):
         + r"(?P<hours_per_ns>[0-9]+\.[0-9]+).*",
         group_name="hours_per_ns",
         units="hours/ns",
+        fom_type=FomType.INFO,
     )

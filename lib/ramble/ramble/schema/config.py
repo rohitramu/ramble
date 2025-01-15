@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -103,6 +103,19 @@ properties["config"]["spack"] = {
             },
             "additionalProperties": False,
         },
+        "env_view": {
+            "type": "object",
+            "default": {
+                "link_type": "symlink",
+            },
+            "properties": {
+                "link_type": {
+                    "type": "string",
+                    "default": "symlink",
+                },
+            },
+            "additionalProperties": False,
+        },
     },
     "additionalProperties": False,
 }
@@ -137,11 +150,17 @@ properties["config"]["workspace_dirs"] = {
     "default": "$ramble/var/ramble/workspaces",
 }
 
+properties["config"]["report_dirs"] = {
+    "type": "string",
+    "default": "~/.ramble/reports",
+}
+
 properties["config"]["upload"] = {
     "type": "object",
     "properties": {
         "uri": {"type": "string", "default": ""},
-        "type": {"type": "string", "default": "BigQuery"},
+        "push_failed": {"type": "boolean", "default": True},
+        "type": {"type": "string", "default": "BigQuery", "enum": ["BigQuery", "PrintOnly"]},
     },
 }
 

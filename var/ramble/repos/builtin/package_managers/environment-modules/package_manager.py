@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -29,25 +29,51 @@ class EnvironmentModules(PackageManagerBase):
 
     maintainers("douglasjacobsen")
 
+    _spec_prefix = "environment_modules"
+
     register_phase(
         "write_module_commands",
         pipeline="setup",
         run_before=["make_experiments"],
     )
 
+    def _generate_loads_content(self, workspace):
+        if not hasattr(self, "_load_string"):
+            app_context = self.app_inst.expander.expand_var_name(
+                self.keywords.env_name
+            )
+
+            require_env = self.environment_required()
+
+            software_envs = workspace.software_environments
+            software_env = software_envs.render_environment(
+                app_context, self.app_inst.expander, self, require=require_env
+            )
+
+            load_content = []
+
+            if software_env is not None:
+                for spec in software_envs.package_specs_for_environment(
+                    software_env
+                ):
+                    load_content.append(f"module load {spec}")
+
+            self._load_string = "\n".join(load_content)
+
+        return self._load_string
+
     def populate_inventory(
         self, workspace, force_compute=False, require_exist=False
     ):
-        env_path = self.app_inst.expander.env_path
-
         self.app_inst.hash_inventory["package_manager"].append(
             {
                 "name": self.name,
             }
         )
 
-        env_hash = ramble.util.hashing.hash_file(
-            os.path.join(env_path, "module_loads")
+        env_path = self.app_inst.expander.env_path
+        env_hash = ramble.util.hashing.hash_string(
+            self._generate_loads_content(workspace)
         )
 
         self.app_inst.hash_inventory["software"].append(
@@ -58,7 +84,24 @@ class EnvironmentModules(PackageManagerBase):
         )
 
     def _write_module_commands(self, workspace, app_inst=None):
+        env_path = self.app_inst.expander.env_path
 
+        module_file_path = os.path.join(env_path, "module_loads")
+
+        fs.mkdirp(env_path)
+
+        loads_content = self._generate_loads_content(workspace)
+
+        with open(module_file_path, "w+") as f:
+            f.write(loads_content)
+
+    register_builtin("module_load", required=True)
+
+    def module_load(self):
+        shell = ramble.config.get("config:shell")
+        return [f"{source_str(shell)} " + "{env_path}/module_loads"]
+
+    def _add_software_to_results(self, workspace, app_inst=None):
         app_context = self.app_inst.expander.expand_var_name(
             self.keywords.env_name
         )
@@ -70,23 +113,18 @@ class EnvironmentModules(PackageManagerBase):
             app_context, self.app_inst.expander, self, require=require_env
         )
 
-        env_path = self.app_inst.expander.env_path
+        if self._spec_prefix not in app_inst.result.software:
+            app_inst.result.software[self._spec_prefix] = []
 
-        module_file_path = os.path.join(env_path, "module_loads")
-
-        fs.mkdirp(env_path)
-
-        module_file = open(module_file_path, "w+")
+        package_list = app_inst.result.software[self._spec_prefix]
 
         if software_env is not None:
             for spec in software_envs.package_specs_for_environment(
                 software_env
             ):
-                module_file.write(f"module load {spec}\n")
-        module_file.close()
-
-    register_builtin("module_load", required=True)
-
-    def module_load(self):
-        shell = ramble.config.get("config:shell")
-        return [f"{source_str(shell)} " + "{env_path}/module_loads"]
+                parts = spec.split("/")
+                name = parts[0]
+                version = "/".join(parts[1:]) if len(parts) > 1 else ""
+                package_list.append(
+                    {"name": name, "version": version, "variants": ""}
+                )

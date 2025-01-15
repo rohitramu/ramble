@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -8,13 +8,15 @@
 
 import itertools
 
+ALL_PHASES = ["*"]
+
 
 class Filters:
     """Object containing filters for limiting various operations in Ramble"""
 
     def __init__(
         self,
-        phase_filters=["*"],
+        phase_filters=ALL_PHASES,
         include_where_filters=None,
         exclude_where_filters=None,
         tags=None,

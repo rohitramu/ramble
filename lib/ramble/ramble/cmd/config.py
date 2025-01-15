@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -186,7 +186,10 @@ def config_edit(args):
         if not os.path.isdir(os.path.dirname(config_file)):
             fs.mkdirp(os.path.dirname(config_file))
 
-        return ramble.util.editor.editor(config_file)
+        try:
+            return ramble.util.editor.editor(config_file)
+        except TypeError:
+            logger.die("No valid editor was found.")
 
 
 def config_list(args):

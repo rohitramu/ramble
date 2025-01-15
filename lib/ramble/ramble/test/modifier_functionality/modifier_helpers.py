@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -40,9 +40,11 @@ def check_execute_script(script_path, tests):
             assert test in data
 
 
-def named_modifier(name):
+def named_modifier(name, mode=None):
     modifier_def = syaml.syaml_dict()
     modifier_def["name"] = name
+    if mode is not None:
+        modifier_def["mode"] = mode
     return modifier_def
 
 

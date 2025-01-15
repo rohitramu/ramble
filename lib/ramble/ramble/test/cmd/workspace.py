@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -344,6 +344,68 @@ ramble:
     assert "- basic.test_wl2.test_experiment.chain.0.basic.test_wl.test_experiment" in output
 
 
+def test_workspace_info_with_where_filter():
+    test_config = """
+ramble:
+  variables:
+    mpi_command: 'mpirun -n {n_ranks} -ppn {processes_per_node}'
+    batch_submit: 'batch_submit {execute_experiment}'
+    processes_per_node: '5'
+    n_ranks: '{processes_per_node}*{n_nodes}'
+  applications:
+    basic:
+      workloads:
+        test_wl:
+          experiments:
+            test_experiment:
+              variables:
+                n_nodes: '2'
+        test_wl2:
+          experiments:
+            test_experiment:
+              variables:
+                n_nodes: '2'
+    zlib:
+      workloads:
+        ensure_installed:
+          experiments:
+            test_experiment:
+              variables:
+                n_nodes: '2'
+  software:
+    packages:
+      zlib:
+        pkg_spec: 'zlib'
+    environments:
+      zlib:
+        packages:
+        - zlib
+"""
+
+    workspace_name = "test_info"
+    ws1 = ramble.workspace.create(workspace_name)
+    ws1.write()
+
+    config_path = os.path.join(ws1.config_dir, ramble.workspace.config_file_name)
+
+    with open(config_path, "w+") as f:
+        f.write(test_config)
+
+    ws1._re_read()
+
+    output = workspace(
+        "info",
+        "--software",
+        "--where",
+        '"{experiment_index}" == "1"',
+        global_args=["-w", workspace_name],
+    )
+
+    assert "basic.test_wl.test_experiment" in output
+    assert "basic.test_wl2.test_experiment" not in output
+    assert "zlib.ensure_installed.test_experiment" not in output
+
+
 def test_workspace_dir(tmpdir):
     with tmpdir.as_cwd():
         workspace("create", "-d", ".")
@@ -536,7 +598,7 @@ ramble:
   software:
     packages:
       zlib:
-        pkg_spec: 'zlib'
+        pkg_spec: 'zlib@1.3'
     environments:
       zlib:
         packages:
@@ -556,7 +618,7 @@ ramble:
 
     with pytest.raises(ramble.workspace.RambleWorkspaceError) as e:
         workspace("concretize", global_args=["-w", workspace_name])
-        assert "Cannot concretize an already concretized workspace." in e
+        assert "Package zlib would be defined in multiple conflicting ways" in e
 
 
 def test_force_concretize():
@@ -610,11 +672,12 @@ ramble:
 
     ws1._re_read()
 
-    with pytest.raises(ramble.workspace.RambleWorkspaceError) as e:
-        workspace("concretize", global_args=["-w", workspace_name])
-        assert "Cannot concretize an already concretized workspace." in e
-
     workspace("concretize", "-f", global_args=["-w", workspace_name])
+
+    assert search_files_for_string([config_path], "zlib:") is True
+    assert search_files_for_string([config_path], "zlib-test") is True
+
+    workspace("concretize", "--simplify", global_args=["-w", workspace_name])
 
     assert search_files_for_string([config_path], "zlib:") is True
     assert search_files_for_string([config_path], "zlib-test") is False
@@ -804,8 +867,19 @@ def test_edit_edits_correct_paths():
 
     config_file = ramble.workspace.config_file(ws.root)
     default_template_path = ws.template_path("execute_experiment")
+    experiments_test_file = os.path.join(ws.experiment_dir, "test")
 
     ws_args = ["-w", "test"]
+    assert (
+        workspace("edit", "-f", "ramble.yaml", "--print-file", global_args=ws_args).strip()
+        == config_file
+    )
+    assert (
+        workspace(
+            "edit", "-f", "{workspace_experiments}/test", "--print-file", global_args=ws_args
+        ).strip()
+        == experiments_test_file
+    )
     assert workspace("edit", "-c", "--print-file", global_args=ws_args).strip() == config_file
     assert (
         workspace("edit", "-t", "--print-file", global_args=ws_args).strip()
@@ -1992,3 +2066,214 @@ software:
     # ensure apps/pkgs/envs are not merged into workspace config from other config files
     assert search_files_for_string([ws_config_path], "app_not_in_ws_config") is False
     assert search_files_for_string([ws_config_path], "pkg_not_in_ws_config") is False
+
+
+def write_variables_config_file(file_path, levels, value):
+    with open(file_path, "w+") as f:
+        f.write("variables:\n")
+        for i in range(0, levels):
+            f.write(f"  scope{i}: {value}\n")
+
+
+def test_workspace_config_precedence(request, tmpdir):
+    workspace_name = request.node.name
+    ws = ramble.workspace.create(workspace_name)
+
+    global_args = ["-w", workspace_name]
+
+    # Highest precedence, experiment scope
+    workspace(
+        "manage",
+        "experiments",
+        "basic",
+        "--wf",
+        "test_wl",
+        "-e",
+        "unit-test",
+        "-v",
+        "n_nodes=1",
+        "-v",
+        "n_ranks=1",
+        "-v",
+        "scope0=experiment",
+        global_args=global_args,
+    )
+
+    # 2nd highest precedence, included (in an included path)
+    included_path = os.path.join(ws.root, "variables.yaml")
+    with open(ws.config_file_path, "a") as f:
+        f.write("  include:\n")
+        f.write(f"  - {included_path}\n")
+
+    write_variables_config_file(included_path, 2, "include_path")
+
+    # 3rd highest precedence, workspace overrides (in configs/variables.yaml)
+    workspace_overrides = os.path.join(ws.config_dir, "variables.yaml")
+    write_variables_config_file(workspace_overrides, 3, "workspace_overrides")
+
+    # 4th highest precedence, workspace (in ramble.yaml)
+    config("add", "variables:scope0:workspace", global_args=global_args)
+    config("add", "variables:scope1:workspace", global_args=global_args)
+    config("add", "variables:scope2:workspace", global_args=global_args)
+    config("add", "variables:scope3:workspace", global_args=global_args)
+
+    output = workspace("info", "-vv", global_args=global_args)
+
+    assert "scope0 = experiment" in output
+    assert "scope1 = include_path" in output
+    assert "scope2 = workspace_override" in output
+    assert "scope3 = workspace" in output
+
+
+def test_workspace_info_software(request):
+    workspace_name = request.node.name
+
+    ramble.workspace.create(workspace_name)
+
+    global_args = ["-w", workspace_name]
+
+    workspace(
+        "manage",
+        "experiments",
+        "basic",
+        "--wf",
+        "test_wl",
+        "-e",
+        "pip-test",
+        "-v",
+        "n_nodes=1",
+        "-v",
+        "n_ranks=1",
+        "-v",
+        "env_name=pip-env",
+        "-p",
+        "pip",
+        global_args=global_args,
+    )
+
+    workspace(
+        "manage",
+        "experiments",
+        "basic",
+        "--wf",
+        "test_wl",
+        "-e",
+        "spack-test",
+        "-v",
+        "n_nodes=1",
+        "-v",
+        "n_ranks=1",
+        "-v",
+        "env_name=spack-env",
+        "-p",
+        "spack",
+        global_args=global_args,
+    )
+
+    workspace(
+        "manage", "software", "--pkg", "pkg1", "--spec", "pip-pkg@1.2.3", global_args=global_args
+    )
+
+    workspace(
+        "manage", "software", "--pkg", "pkg2", "--spec", "spack-pkg@1.2.3", global_args=global_args
+    )
+
+    workspace(
+        "manage",
+        "software",
+        "--env",
+        "pip-env",
+        "--environment-packages",
+        "pkg1",
+        global_args=global_args,
+    )
+
+    workspace(
+        "manage",
+        "software",
+        "--env",
+        "spack-env",
+        "--environment-packages",
+        "pkg2",
+        global_args=global_args,
+    )
+
+    output = workspace("info", "--software", global_args=global_args)
+    assert "pip-pkg" in output
+    assert "spack-pkg" in output
+    assert "pip-test" in output
+    assert "spack-test" in output
+
+    output = workspace(
+        "info",
+        "--software",
+        "--where",
+        "'{experiment_name}' == 'spack-test'",
+        global_args=global_args,
+    )
+    assert "pip-pkg" not in output
+    assert "spack-pkg" in output
+    assert "pip-test" not in output
+    assert "spack-test" in output
+
+    output = workspace(
+        "info",
+        "--all-software",
+        "--where",
+        "'{experiment_name}' == 'spack-test'",
+        global_args=global_args,
+    )
+    assert "pip-pkg" in output
+    assert "spack-pkg" in output
+    assert "pip-test" not in output
+    assert "spack-test" in output
+
+    output = workspace(
+        "info",
+        "--software",
+        "--where",
+        "'{experiment_name}' == 'pip-test'",
+        global_args=global_args,
+    )
+    assert "pip-pkg" in output
+    assert "spack-pkg" not in output
+    assert "pip-test" in output
+    assert "spack-test" not in output
+
+    output = workspace(
+        "info",
+        "--all-software",
+        "--where",
+        "'{experiment_name}' == 'pip-test'",
+        global_args=global_args,
+    )
+    assert "pip-pkg" in output
+    assert "spack-pkg" in output
+    assert "pip-test" in output
+    assert "spack-test" not in output
+
+
+def test_workspace_no_empty_workloads(request):
+    workspace_name = request.node.name
+    global_args = ["-w", workspace_name]
+
+    with ramble.workspace.create(workspace_name) as ws:
+        ws.write()
+
+        workspace(
+            "manage",
+            "experiments",
+            "basic",
+            "--wf",
+            "nothing*",
+            "-v",
+            "n_nodes=1",
+            "-v",
+            "n_ranks=1",
+            global_args=global_args,
+        )
+
+        with open(ws.config_file_path) as f:
+            data = f.read()
+            assert "basic:" not in data
+            assert "workloads: {}" not in data

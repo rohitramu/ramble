@@ -1,4 +1,4 @@
-.. Copyright 2022-2024 The Ramble Authors
+.. Copyright 2022-2025 The Ramble Authors
 
    Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
    https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -65,7 +65,7 @@ To discover which modifiers are available, execute:
 
 .. code-block:: console
 
-    $ ramble mods list
+    $ ramble list --type modifiers
 
 Which might output the following:
 
@@ -77,12 +77,12 @@ Which might output the following:
 This shows there are four modifiers in this installation of Ramble. Two very
 general modifiers in this list are ``lscpu`` and ``intel-aps``. Modifiers are
 allowed to behave in different ways. Their functionality should be documented
-at a high-level through the ``ramble mods info`` command. To get information
+at a high-level through the ``ramble info --type modifiers`` command. To get information
 about the ``lscpu`` modifier, execute:
 
 .. code-block:: console
 
-    $ ramble mods info lscpu
+    $ ramble info --type modifiers lscpu
 
 This modifier adds the execution of ``lscpu`` to each experiment in a workspace
 (to capture additional platform level details, such as the CPU model), and
@@ -157,7 +157,7 @@ To get information about the ``intel-aps`` modifier, execute:
 
 .. code-block:: console
 
-    $ ramble mods info intel-aps
+    $ ramble info --type modifiers intel-aps
 
 In the output from this command, you should see a ``mode`` named ``mpi``. One
 additional difference relateive to ``lscpu`` is that the ``Software Specs:``

@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -388,7 +388,7 @@ class Namd(ExecutableApplication):
         dpns = None
 
         if os.path.isfile(log_path):
-            with open(log_path, "r") as f:
+            with open(log_path) as f:
                 for line in f.readlines():
                     match = ns_regex.match(line)
                     if match:

@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -25,6 +25,7 @@ import ramble.cmd.common.arguments as arguments
 import ramble.config
 import ramble.workspace
 import ramble.workspace.shell
+import ramble.expander
 import ramble.experiment_set
 import ramble.context
 import ramble.pipeline
@@ -51,9 +52,14 @@ subcommands = [
     "info",
     "edit",
     "mirror",
+    "experiment-logs",
     ["list", "ls"],
     ["remove", "rm"],
+    "generate-config",
+    "manage",
 ]
+
+manage_commands = ["experiments", "software"]
 
 
 def workspace_activate_setup_parser(subparser):
@@ -340,7 +346,7 @@ def _workspace_create(
     if config:
         with open(config) as f:
             workspace._read_config("workspace", f)
-            workspace._write_config("workspace")
+            workspace._write_config("workspace", force=True)
 
     if template_execute:
         with open(template_execute) as f:
@@ -413,6 +419,14 @@ def workspace_concretize_setup_parser(subparser):
         help="Remove unused software and experiment templates from workspace config",
         required=False,
     )
+    subparser.add_argument(
+        "--quiet",
+        "-q",
+        dest="quiet",
+        action="store_true",
+        help="Silently ignore conflicting package definitions",
+        required=False,
+    )
 
 
 def workspace_concretize(args):
@@ -422,11 +436,8 @@ def workspace_concretize(args):
         logger.debug("Simplifying workspace config")
         ws.simplify()
     else:
-        if args.force_concretize:
-            ws.force_concretize = True
-
         logger.debug("Concretizing workspace")
-        ws.concretize()
+        ws.concretize(force=args.force_concretize, quiet=args.quiet)
 
 
 def workspace_run_pipeline(args, pipeline):
@@ -474,7 +485,7 @@ def workspace_setup(args):
     logger.debug("Setting up workspace")
     pipeline = pipeline_cls(ws, filters)
 
-    with ws.write_transaction():
+    with ws.read_transaction():
         workspace_run_pipeline(args, pipeline)
 
 
@@ -500,27 +511,19 @@ def workspace_analyze_setup_parser(subparser):
     )
 
     subparser.add_argument(
-        "--always-print-foms",
-        dest="always_print_foms",
-        action="store_true",
-        help="Control if figures of merit are printed even if an experiment fails",
-        required=False,
-    )
-
-    subparser.add_argument(
-        "--dry-run",
-        dest="dry_run",
-        action="store_true",
-        help="perform a dry run. Allows going through analysis phases"
-        + "on workspaces which are not fully setup",
-    )
-
-    subparser.add_argument(
         "-p",
         "--print-results",
         dest="print_results",
         action="store_true",
         help="print out the analysis result",
+    )
+
+    subparser.add_argument(
+        "-s",
+        "--summary-only",
+        dest="summary_only",
+        action="store_true",
+        help="print out only the summary stats for repeated experiments",
     )
 
     arguments.add_common_arguments(
@@ -532,11 +535,7 @@ def workspace_analyze_setup_parser(subparser):
 def workspace_analyze(args):
     current_pipeline = ramble.pipeline.pipelines.analyze
     ws = ramble.cmd.require_active_workspace(cmd_name="workspace analyze")
-    ws.always_print_foms = args.always_print_foms
     ws.repeat_success_strict = ramble.config.get("config:repeat_success_strict")
-
-    if args.dry_run:
-        ws.dry_run = True
 
     filters = ramble.filters.Filters(
         phase_filters=args.phases,
@@ -554,9 +553,10 @@ def workspace_analyze(args):
         output_formats=args.output_formats,
         upload=args.upload,
         print_results=args.print_results,
+        summary_only=args.summary_only,
     )
 
-    with ws.write_transaction():
+    with ws.read_transaction():
         workspace_run_pipeline(args, pipeline)
 
 
@@ -590,10 +590,17 @@ def workspace_push_to_cache_setup_parser(subparser):
 
 def workspace_info_setup_parser(subparser):
     """Information about a workspace"""
-    subparser.add_argument(
+    software_opts = subparser.add_mutually_exclusive_group()
+    software_opts.add_argument(
         "--software",
         action="store_true",
-        help="If set, software stack information will be printed",
+        help="If set, used software stack information will be printed",
+    )
+
+    software_opts.add_argument(
+        "--all-software",
+        action="store_true",
+        help="If set, all software stack information will be printed",
     )
 
     subparser.add_argument(
@@ -681,6 +688,17 @@ def workspace_info(args):
                 print_experiment_set.set_experiment_context(experiment_context)
                 print_experiment_set.build_experiment_chains()
 
+                # Reindex the experiments in the print set to match the overall set
+                for exp_name, print_app_inst, _ in print_experiment_set.all_experiments():
+                    app_inst = experiment_set.get_experiment(exp_name)
+                    experiment_index = app_inst.expander.expand_var_name(
+                        app_inst.keywords.experiment_index
+                    )
+
+                    print_app_inst.define_variable(
+                        print_app_inst.keywords.experiment_index, experiment_index
+                    )
+
                 print_header = True
                 # Define variable printing groups.
                 var_indent = "        "
@@ -709,6 +727,10 @@ def workspace_info(args):
                             app_inst.expander.expand_var("{env_name}"),
                             app_inst.expander,
                             app_inst.package_manager,
+                        )
+                        # Track this env as used, for printing purposes
+                        software_environments.use_environment(
+                            app_inst.package_manager, app_inst.expander.expand_var("{env_name}")
                         )
 
                     if print_header:
@@ -776,11 +798,15 @@ def workspace_info(args):
             colify(all_pipelines[pipeline], indent=4)
 
     # Print software stack information
-    if args.software:
+    if args.software or args.all_software:
         color.cprint("")
-        #  software_environments.print_environments(verbosity=args.verbose)
         color.cprint(rucolor.section_title("Software Stack:"))
-        color.cprint(software_environments.info(verbosity=args.verbose, indent=4, color_level=1))
+        only_used_software = args.software
+        color.cprint(
+            software_environments.info(
+                verbosity=args.verbose, indent=4, color_level=1, only_used=only_used_software
+            )
+        )
 
 
 #
@@ -815,6 +841,15 @@ def workspace_list(args):
 def workspace_edit_setup_parser(subparser):
     """edit workspace config or template"""
     subparser.add_argument(
+        "-f",
+        "--file",
+        dest="filename",
+        default=None,
+        help="Open a single file by filename",
+        required=False,
+    )
+
+    subparser.add_argument(
         "-c",
         "--config_only",
         dest="config_only",
@@ -842,6 +877,14 @@ def workspace_edit_setup_parser(subparser):
     )
 
     subparser.add_argument(
+        "--all",
+        dest="all_files",
+        action="store_true",
+        help="Open all yaml and template files in workspace config directory",
+        required=False,
+    )
+
+    subparser.add_argument(
         "-p", "--print-file", action="store_true", help="print the file name that would be edited"
     )
 
@@ -858,21 +901,37 @@ def workspace_edit(args):
     config_file = ramble.workspace.config_file(ramble_ws)
     template_files = ramble.workspace.all_template_paths(ramble_ws)
 
-    edit_files = [config_file] + template_files
+    edit_files = [config_file]
+    edit_files.extend(template_files)
 
-    if args.config_only:
+    if args.filename:
+        expander = ramble.expander.Expander(
+            ramble.workspace.Workspace.get_workspace_paths(ramble_ws), None
+        )
+        # If filename contains expansion strings, edit expanded path. Else assume configs dir.
+        expanded_filename = expander.expand_var(args.filename)
+        if expanded_filename != args.filename:
+            edit_files = [expanded_filename]
+        else:
+            edit_files = [ramble.workspace.get_filepath(ramble_ws, expanded_filename)]
+    elif args.config_only:
         edit_files = [config_file]
     elif args.template_only:
         edit_files = template_files
     elif args.license_only:
         licenses_file = [ramble.workspace.licenses_file(ramble_ws)]
         edit_files = licenses_file
+    elif args.all_files:
+        edit_files = ramble.workspace.all_config_files(ramble_ws) + template_files
 
     if args.print_file:
         for f in edit_files:
             print(f)
     else:
-        editor(*edit_files)
+        try:
+            editor(*edit_files)
+        except TypeError:
+            logger.die("No valid editor was found.")
 
 
 def workspace_archive_setup_parser(subparser):
@@ -975,6 +1034,347 @@ def workspace_mirror(args):
     pipeline.run()
 
 
+def workspace_manage_experiments_setup_parser(subparser):
+    """manage experiment definitions"""
+    arguments.add_common_arguments(subparser, ["application"])
+
+    subparser.add_argument(
+        "--workload-filter",
+        "--wf",
+        dest="workload_filters",
+        action="append",
+        help="glob filter to use when selecting workloads in the application. "
+        + "Workload is kept if it matches any filter.",
+    )
+
+    subparser.add_argument(
+        "--variable-filter",
+        "--vf",
+        dest="variable_filters",
+        action="append",
+        help="glob filter to use when selecting variables in the workloads. "
+        + "Variable is kept if it matches any filter.",
+    )
+
+    subparser.add_argument(
+        "--variable-definition",
+        "-v",
+        dest="variable_definitions",
+        action="append",
+        help="variable definition to set in the generated experiments. "
+        + "Given in the form key=value",
+    )
+
+    subparser.add_argument(
+        "--experiment-name",
+        "-e",
+        dest="experiment_name",
+        default="generated",
+        help="name of generated experiment",
+    )
+
+    subparser.add_argument(
+        "--package-manager",
+        "-p",
+        dest="package_manager",
+        default=None,
+        help="name of (optional) package to define within the experiment scope",
+    )
+
+    subparser.add_argument(
+        "--dry-run",
+        "--print",
+        dest="dry_run",
+        action="store_true",
+        help="perform a dry run. Print resulting config to screen and not "
+        + "to the workspace configuration file",
+    )
+
+    subparser.add_argument(
+        "--overwrite",
+        dest="overwrite",
+        action="store_true",
+        help="overwrite existing definitions with newly generated definitions",
+    )
+
+    variable_control = subparser.add_mutually_exclusive_group()
+    variable_control.add_argument(
+        "--include-default-variables",
+        "-i",
+        action="store_true",
+        help="whether to include default variable values in the resulting config",
+    )
+
+    variable_control.add_argument(
+        "--workload-name-variable",
+        "-w",
+        default=None,
+        metavar="VAR",
+        help="variable name to collapse workloads in",
+    )
+
+    subparser.add_argument(
+        "--zip",
+        "-z",
+        dest="zips",
+        action="append",
+        help="zip to define for the experiments, in the format zipname=[zipvar1,zipvar2]",
+    )
+
+    subparser.add_argument(
+        "--matrix",
+        "-m",
+        dest="matrix",
+        help="comma delimited list of variable names to matrix in the experiments",
+    )
+
+
+def workspace_manage_experiments(args):
+    """Perform experiment management"""
+    ws = ramble.cmd.find_workspace(args)
+
+    if ws is None:
+        import tempfile
+
+        logger.warn("No active workspace found. Defaulting to `--dry-run`")
+
+        root = tempfile.TemporaryDirectory()
+        ws = ramble.workspace.Workspace(str(root))
+        ws.dry_run = True
+    else:
+        ws.dry_run = args.dry_run
+
+    workload_filters = ["*"]
+    if args.workload_filters:
+        workload_filters = args.workload_filters
+
+    variable_filters = ["*"]
+    if args.variable_filters:
+        variable_filters = args.variable_filters
+
+    variable_definitions = []
+    if args.variable_definitions:
+        variable_definitions = args.variable_definitions
+
+    zips = []
+    if args.zips:
+        zips = args.zips
+
+    matrix = None
+    if args.matrix:
+        matrix = args.matrix
+
+    ws.add_experiments(
+        args.application,
+        args.workload_name_variable,
+        workload_filters,
+        args.include_default_variables,
+        variable_filters,
+        variable_definitions,
+        args.experiment_name,
+        args.package_manager,
+        zips,
+        matrix,
+        args.overwrite,
+    )
+
+    if ws.dry_run:
+        ws.print_config()
+
+
+def workspace_manage_software_setup_parser(subparser):
+    """manage workspace software definitions"""
+
+    subparser.add_argument(
+        "--environment-name",
+        "--env",
+        dest="environment_name",
+        metavar="ENV",
+        help="Name of environment to define",
+    )
+
+    env_types = subparser.add_mutually_exclusive_group()
+    env_types.add_argument(
+        "--environment-packages",
+        dest="environment_packages",
+        help="Comma separated list of packages to add into environment",
+        metavar="PKG1,PKG2,PKG2",
+    )
+
+    env_types.add_argument(
+        "--external-env",
+        dest="external_env_path",
+        help="Path to external environment description",
+        metavar="PATH",
+    )
+
+    subparser.add_argument(
+        "--package-name",
+        "--pkg",
+        dest="package_name",
+        metavar="NAME",
+        help="Name of package to define",
+    )
+
+    subparser.add_argument(
+        "--package-spec",
+        "--pkg-spec",
+        "--spec",
+        dest="package_spec",
+        metavar="SPEC",
+        help="Value for the pkg_spec attribute in the defined package",
+    )
+
+    subparser.add_argument(
+        "--compiler-package",
+        "--compiler-pkg",
+        "--compiler",
+        dest="compiler_package",
+        metavar="PKG",
+        help="Value for the compiler attribute in the defined package",
+    )
+
+    subparser.add_argument(
+        "--compiler-spec",
+        dest="compiler_spec",
+        metavar="SPEC",
+        help="Value for the compiler_spec attribute in the defined package",
+    )
+
+    subparser.add_argument(
+        "--package-manager-prefix",
+        "--prefix",
+        dest="package_manager_prefix",
+        metavar="PREFIX",
+        help="Prefix for defined package attributes. "
+        "Resulting attributes will be {prefix}_pkg_spec.",
+    )
+
+    modify_types = subparser.add_mutually_exclusive_group()
+    modify_types.add_argument(
+        "--remove",
+        "--delete",
+        action="store_true",
+        help="Whether to remove named package and environment definitions if they exist.",
+    )
+
+    modify_types.add_argument(
+        "--overwrite",
+        "-o",
+        action="store_true",
+        help="Whether to overwrite existing definitions or not.",
+    )
+
+    subparser.add_argument(
+        "--dry-run",
+        "--print",
+        dest="dry_run",
+        action="store_true",
+        help="perform a dry run. Print resulting config to screen and not "
+        + "to the workspace configuration file",
+    )
+
+
+def workspace_manage_software(args):
+    """Execute workspace manage software command"""
+
+    ws = ramble.cmd.find_workspace(args)
+
+    if ws is None:
+        import tempfile
+
+        logger.warn("No active workspace found. Defaulting to `--dry-run`")
+
+        root = tempfile.TemporaryDirectory()
+        ws = ramble.workspace.Workspace(str(root))
+        ws.dry_run = True
+    else:
+        ws.dry_run = args.dry_run
+
+    if args.package_name:
+        ws.manage_packages(
+            args.package_name,
+            args.package_spec,
+            args.compiler_package,
+            args.compiler_spec,
+            args.package_manager_prefix,
+            args.remove,
+            args.overwrite,
+        )
+
+    if args.environment_name:
+        ws.manage_environments(
+            args.environment_name,
+            args.environment_packages,
+            args.external_env_path,
+            args.remove,
+            args.overwrite,
+        )
+
+    if ws.dry_run:
+        ws.print_config()
+
+
+def workspace_generate_config_setup_parser(subparser):
+    """generate current workspace config"""
+    workspace_manage_experiments_setup_parser(subparser)
+
+
+def workspace_generate_config(args):
+    """Generate a configuration file for this ramble workspace"""
+    workspace_manage_experiments(args)
+
+
+def workspace_experiment_logs_setup_parser(subparser):
+    """print log information for workspace"""
+    default_filters = subparser.add_mutually_exclusive_group()
+    default_filters.add_argument(
+        "--limit-one", action="store_true", help="only print the first log information block"
+    )
+
+    default_filters.add_argument(
+        "--first-failed",
+        action="store_true",
+        help="only print the information for the first failed experiment. "
+        + "Requires `ramble workspace analyze` to have been run previously",
+    )
+
+    default_filters.add_argument(
+        "--failed", action="store_true", help="print only failed experiment logs"
+    )
+
+    arguments.add_common_arguments(
+        subparser,
+        ["where", "exclude_where", "filter_tags"],
+    )
+
+
+def workspace_experiment_logs(args):
+    """Print log information for workspace"""
+
+    current_pipeline = ramble.pipeline.pipelines.logs
+    ws = ramble.cmd.require_active_workspace(cmd_name="workspace concretize")
+
+    first_only = args.limit_one or args.first_failed
+    where_filter = args.where.copy() if args.where else []
+    exclude_filter = args.exclude_where.copy() if args.exclude_where else []
+    only_failed = args.first_failed or args.failed
+
+    if only_failed:
+        exclude_filter.append(["'{experiment_status}' == 'SUCCESS'"])
+
+    filters = ramble.filters.Filters(
+        include_where_filters=where_filter,
+        exclude_where_filters=exclude_filter,
+        tags=args.filter_tags,
+    )
+
+    pipeline_cls = ramble.pipeline.pipeline_class(current_pipeline)
+    pipeline = pipeline_cls(ws, filters, first_only=first_only)
+    with ws.write_transaction():
+        workspace_run_pipeline(args, pipeline)
+
+
 #: Dictionary mapping subcommand names and aliases to functions
 subcommand_functions = {}
 
@@ -1018,3 +1418,42 @@ def workspace(parser, args):
     """Look for a function called workspace_<name> and call it."""
     action = subcommand_functions[args.workspace_command]
     action(args)
+
+
+manage_subcommand_functions = {}
+
+
+def workspace_manage(args):
+    """Look for a function for the manage subcommand, and execute it."""
+    action = manage_subcommand_functions[args.manage_command]
+    action(args)
+
+
+def workspace_manage_setup_parser(subparser):
+    """manage workspace definitions"""
+    sp = subparser.add_subparsers(metavar="SUBCOMMAND", dest="manage_command")
+
+    for name in manage_commands:
+        if isinstance(name, (list, tuple)):
+            name, aliases = name[0], name[1:]
+        else:
+            aliases = []
+
+        # add commands to subcommands dict
+        function_name = sanitize_arg_name("workspace_manage_%s" % name)
+
+        function = globals()[function_name]
+        for alias in [name] + aliases:
+            manage_subcommand_functions[alias] = function
+
+        # make a subparser and run the command's setup function on it
+        setup_parser_cmd_name = sanitize_arg_name("workspace_manage_%s_setup_parser" % name)
+        setup_parser_cmd = globals()[setup_parser_cmd_name]
+
+        subsubparser = sp.add_parser(
+            name,
+            aliases=aliases,
+            help=setup_parser_cmd.__doc__,
+            description=setup_parser_cmd.__doc__,
+        )
+        setup_parser_cmd(subsubparser)

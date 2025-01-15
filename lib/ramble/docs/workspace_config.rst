@@ -1,4 +1,4 @@
-.. Copyright 2022-2024 The Ramble Authors
+.. Copyright 2022-2025 The Ramble Authors
 
    Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
    https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -174,6 +174,15 @@ Supported functions are:
 * ``simplify_str()`` (convert input string to only alphanumerical characters and dashes)
 * ``randrange`` (from `random.randrange`)
 * ``randint`` (from `random.randint`)
+* ``re_search(regex, str)`` (determine if ``str`` contains pattern ``regex``, based on ``re.search``)
+
+String slicing is supported:
+
+* ``str[start:end:step]`` (string slicing)
+
+Dictionary references are supported:
+
+* ``dict_name["key"]`` (dictionary subscript)
 
 .. _ramble-escaped-variables:
 
@@ -405,6 +414,9 @@ defined in.
 
   variants:
     package_manager: spack
+
+For more information about controlling package managers see the
+:ref:`package manager documentation <package-manager-control>`.
 
 
 .. _ramble-experiment-exclusion:
@@ -688,6 +700,11 @@ If it is not set, modifiers will attempt to determine their own ``mode``
 attribute. This will succeed if the modifier has a single mode of operation. If
 there are multiple modes, this will raise an exception.
 
+Every modifier has a ``disabled`` mode that is defined by default. This mode
+will never be automatically enabled, but it will allow experiments to turn off
+the modifier without having to remove the modifier from the experiment
+definitions.
+
 If the ``on_executable`` attribute is not set, it will default to ``'*'`` which
 will match all executables. Modifier classes can (and should) be implemented to
 only act on the correct executable types (i.e. executables with ``use_mpi=true``).
@@ -740,6 +757,39 @@ the ``test_exp1`` experiment is tagged with the ``tag1`` tag, while the
 These tags are propagated into a workspace's results file, and can be used to
 filter pipeline commands, as show in the
 :ref:`filtering experiments documentation <filter-experiments>`.
+
+.. _workspace_including_external_files:
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Including External Configuration Files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Ramble workspace configuration files support referring to external
+configuration files. This allows a workspace to be composed of external files
+and directories.
+
+.. code-block::
+   YAML
+
+  ramble:
+    include:
+    - /absolute/path/to/applications.yaml
+    - $workspace_root/directory/in/workspace/
+
+Supported path variables include:
+
+ * ``$workspace_root`` - Root directory of workspace
+ * ``$workspace`` - Root directory of workspace
+ * ``$workspace_configs`` - Configs directory in workspace
+ * ``$workspace_software`` - Software directory in workspace
+ * ``$workspace_logs`` - Logs directory in workspace
+ * ``$workspace_inputs`` - Experiments directory in workspace
+ * ``$workspace_shared`` - Shared directory in workspace
+ * ``$workspace_archives`` - Archives directory in workspace
+ * ``$workspace_deployments`` - Deployments directory in workspace
+
+For more information, see the relevant portion of Spack's documentation on
+`including configurations <https://spack.readthedocs.io/en/latest/environments.html#included-configurations>`_.
 
 .. _workspace_internals:
 
@@ -923,7 +973,9 @@ Ramble automatically generates definitions for the following variables:
 * ``experiment_index`` - Index, in set, of experiment. If part of a chain,
   shares a value with its root.
 * ``env_path`` - Absolute path to
-  ``$workspace_root/software/{env_name}.{workload_name}``
+  ``$workspace_root/software/{package_manager_name}/{env_name}.{workload_name}``
+  if no package manager is used, ``{package_manager_name}`` is replaced with
+  ``no-package-manager``.
 * ``log_dir`` - Absolute path to ``$workspace_root/logs``
 * ``log_file`` - Absolute path to
   ``{experiment_run_dir}/{experiment_name}.out``
@@ -1211,7 +1263,7 @@ In the above example, the chained experiment would have a namespace of:
 ``hostname.serial.test_exp2.chain.0.hostname.serial.test_exp1``
 
 The ``name`` attribute can use `globbing
-syntax<https://docs.python.org/3/library/fnmatch.html#module-fnmatch>` to chain
+syntax<https://docs.python.org/3/library/fnmatch.html#module-fnmatch>`_ to chain
 multiple experiments at once.
 
 The ``order`` keyword is optional. Valid options include:

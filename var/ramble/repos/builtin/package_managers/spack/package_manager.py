@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -10,10 +10,9 @@ import deprecation
 
 from ramble.pkgmankit import *  # noqa: F403
 
-from ramble.pkg_man.builtin.spack_lightweight import (
-    SpackLightweight,
-    RunnerError,
-)
+from ramble.util.command_runner import RunnerError
+
+from ramble.pkg_man.builtin.spack_lightweight import SpackLightweight
 
 
 class Spack(SpackLightweight):
@@ -43,7 +42,7 @@ class Spack(SpackLightweight):
 
         cache_tupl = ("spack-install", env_path)
         if workspace.check_cache(cache_tupl):
-            logger.debug("{} already in cache.".format(cache_tupl))
+            logger.debug(f"{cache_tupl} already in cache.")
             return
         else:
             workspace.add_to_cache(cache_tupl)

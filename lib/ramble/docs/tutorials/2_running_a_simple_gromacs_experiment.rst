@@ -1,4 +1,4 @@
-.. Copyright 2022-2024 The Ramble Authors
+.. Copyright 2022-2025 The Ramble Authors
 
    Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
    https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -32,7 +32,7 @@ get information about these workloads:
 
 .. code-block:: console
 
-    $ ramble info -a workloads -v -p "water*" gromacs
+    $ ramble info --attrs workloads -v -p "water*" gromacs
 
 Under the workloads marked by ``Workload: water_bare`` and
 ``Workload: water_gmx50``, you should see something like the following output:
@@ -80,7 +80,7 @@ To determine a suggested software configuration, you can use:
 
 .. code-block:: console
 
-  $ ramble info -a software_specs,compilers -v gromacs
+  $ ramble info --attrs software_specs,compilers -v gromacs
 
 With this command, you should see output similar to the following:
 
@@ -95,11 +95,17 @@ With this command, you should see output similar to the following:
       compiler: None
       package_manager: spack*
   
-  gromacs:
+  spack_gromacs:
       pkg_spec: gromacs@2020.5
       compiler_spec: None
       compiler: gcc9
       package_manager: spack*
+  
+  eessi_gromacs:
+      pkg_spec: GROMACS/2024.1-foss-2023b
+      compiler_spec: None
+      compiler: None
+      package_manager: eessi
   
   #############
   # compilers #

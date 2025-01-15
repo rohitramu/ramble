@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -14,6 +14,7 @@ from collections import defaultdict
 import ramble.paths
 from ramble.util.logger import logger
 from spack.util.executable import which
+import ramble.repository
 
 description = "list and check license headers on files in ramble"
 section = "developer"
@@ -28,29 +29,43 @@ license_lines = 9
 #: Ramble's license identifier
 apache2_mit_spdx = "(Apache-2.0 OR MIT)"
 
+
+# List out regex for object files
+def _object_file_regex_list():
+    prefix = "var/ramble/repos/.*"
+    regex_list = []
+    for obj_def in ramble.repository.type_definitions.values():
+        regex = rf'{prefix}/{obj_def["file_name"]}$'
+        regex_list.append(regex)
+    return regex_list
+
+
 #: regular expressions for licensed files.
 licensed_files = [
     # ramble scripts
-    r"^bin/ramble$",
-    r"^bin/ramble-python$",
+    r"bin/ramble$",
+    r"bin/ramble-python$",
     # all of ramble core
-    r"^lib/ramble/ramble/.*\.py$",
-    r"^lib/ramble/ramble/.*\.sh$",
-    r"^lib/ramble/llnl/.*\.py$",
+    r"lib/ramble/ramble/.*\.py$",
+    r"lib/ramble/ramble/.*\.sh$",
+    r"lib/ramble/llnl/.*\.py$",
     # rst files in documentation
-    r"^lib/ramble/docs/(?!command_index|ramble|llnl).*\.rst$",
-    r"^lib/ramble/docs/.*\.py$",
+    r"lib/ramble/docs/(?!command_index|ramble|llnl).*\.rst$",
+    r"lib/ramble/docs/.*\.py$",
     # 2 files in external
-    r"^lib/ramble/external/__init__.py$",
-    r"^lib/ramble/external/ordereddict_backport.py$",
-    # shell scripts in share
-    r"^share/ramble/.*\.sh$",
-    r"^share/ramble/.*\.bash$",
-    r"^share/ramble/.*\.csh$",
-    r"^share/ramble/qa/run-[^/]*$",
-    # all applications
-    r"^var/ramble/repos/.*/application.py$",
-]
+    r"lib/ramble/external/__init__.py$",
+    r"lib/ramble/external/ordereddict_backport.py$",
+    # shell scripts in share (include the generated bash completion file)
+    r"share/ramble/.*\.sh$",
+    r"share/ramble/.*\.bash$",
+    r"share/ramble/.*\.csh$",
+    r"share/ramble/qa/run-[^/]*$",
+    r"share/ramble/bash/.*$",
+    r"share/ramble/cloud-build/.*\.yaml$",
+    # examples
+    r"examples/.*\.yaml$",
+] + _object_file_regex_list()
+
 
 #: licensed files that can have LGPL language in them
 #: so far, just this command -- so it can find LGPL things elsewhere
@@ -131,7 +146,7 @@ def _check_license(lines, path):
     # The years are hard-coded in the license header to allow them to be out-dated.
     # The `strict_copyright_date` below issues warnings as reminders for refreshing.
     license_lines = [
-        r"Copyright 2022-2024 The Ramble Authors",
+        r"Copyright 2022-2025 The Ramble Authors",
         r"Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or",
         r"https://www.apache.org/licenses/LICENSE-2.0> or the MIT license",
         r"<LICENSE-MIT or https://opensource.org/licenses/MIT>, at your",
@@ -209,10 +224,14 @@ def verify(args):
 
 def update_copyright_year(args):
     """update copyright header for the current year (utc-based) in all licensed files"""
+    patt = re.compile(r"Copyright \d{4}-\d{4}")
     for filename in _licensed_files():
         with open(filename) as lic_f:
             lines = lic_f.readlines()
-            lines[0] = re.sub(r"Copyright \d{4}-\d{4}", strict_copyright_date, lines[0])
+            for i, license_line in enumerate(lines[:license_lines]):
+                if patt.search(license_line):
+                    lines[i] = patt.sub(strict_copyright_date, license_line)
+                    break
         with open(filename, "w") as lic_f:
             lic_f.writelines(lines)
 
@@ -223,11 +242,16 @@ def update_copyright_year(args):
         with open(file, "w") as f:
             f.write(content)
 
-    # Update also the mit license and sphinx config file
+    # Update also the licenses and sphinx config file
     replace_text(
         os.path.join(ramble.paths.ramble_root, "LICENSE-MIT"),
         r"Copyright \(c\) \d{4}-\d{4}",
         f"Copyright (c) {strict_date_range}",
+    )
+    replace_text(
+        os.path.join(ramble.paths.ramble_root, "LICENSE-APACHE"),
+        r"Copyright \d{4}-\d{4}",
+        f"Copyright {strict_date_range}",
     )
     replace_text(
         os.path.join(ramble.paths.ramble_root, "lib", "ramble", "docs", "conf.py"),

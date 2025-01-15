@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -27,6 +27,17 @@ def _and(a, b):
 
 def _or(a, b):
     return a or b
+
+
+def _re_search(regex, s):
+    import re
+
+    return re.search(regex, s) is not None
+
+
+def _safe_str_node_check(node):
+    # ast.Str was deprecated. short-circuit the test for it to avoid issues with newer python.
+    return hasattr(ast, "Str") and isinstance(node, ast.Str)
 
 
 supported_math_operators = {
@@ -60,6 +71,7 @@ supported_scalar_function_pointers = {
     "randrange": random.randrange,
     "randint": random.randint,
     "simplify_str": spack.util.naming.simplify_name,
+    "re_search": _re_search,
 }
 
 
@@ -322,6 +334,8 @@ class Expander:
     Additionally, math will be evaluated as part of expansion.
     """
 
+    _ast_dbg_prefix = "EXPANDER AST:"
+
     def __init__(self, variables, experiment_set, no_expand_vars=set()):
 
         self._keywords = ramble.keywords.keywords
@@ -329,6 +343,7 @@ class Expander:
         self._variables = variables
         self._no_expand_vars = no_expand_vars
         self._used_variables = set()
+        self._used_variable_stage = set()
 
         self._experiment_set = experiment_set
 
@@ -359,6 +374,13 @@ class Expander:
 
     def set_no_expand_vars(self, no_expand_vars):
         self._no_expand_vars = no_expand_vars.copy()
+
+    def flush_used_variable_stage(self):
+        self._used_variable_stage = set()
+
+    def merge_used_variable_stage(self):
+        self._used_variables = self._used_variables.union(self._used_variable_stage)
+        self.flush_used_variable_stage()
 
     def copy(self):
         return Expander(self._variables.copy(), self._experiment_set)
@@ -493,6 +515,7 @@ class Expander:
         extra_vars: Dict = None,
         allow_passthrough: bool = True,
         typed: bool = False,
+        merge_used_stage: bool = True,
     ):
         """Convert a variable name to an expansion string, and expand it
 
@@ -506,12 +529,15 @@ class Expander:
             allow_passthrough (bool): Whether the string is allowed to have keywords
                                       after expansion
             typed (bool): Whether the return type should be typed or not
+            merge_used_stage (bool): Whether tracked variables are merged into
+                                     the used variable set or not.
         """
         return self.expand_var(
             self.expansion_str(var_name),
             extra_vars=extra_vars,
             allow_passthrough=allow_passthrough,
             typed=typed,
+            merge_used_stage=merge_used_stage,
         )
 
     def expand_var(
@@ -520,6 +546,7 @@ class Expander:
         extra_vars: Dict = None,
         allow_passthrough: bool = True,
         typed: bool = False,
+        merge_used_stage: bool = True,
     ):
         """Perform expansion of a string
 
@@ -532,6 +559,8 @@ class Expander:
             allow_passthrough (bool): Whether the string is allowed to have keywords
                                       after expansion
             typed (bool): Whether the return type should be typed or not
+            merge_used_stage (bool): Whether tracked variables are merged into
+                                     the used variable set or not.
         """
 
         passthrough_setting = allow_passthrough
@@ -566,9 +595,13 @@ class Expander:
                 logger.debug("END OF TYPING Failed with ValueError")
             except SyntaxError:
                 logger.debug("END OF TYPING Failed with SyntaxError")
+
+        if merge_used_stage:
+            self.merge_used_variable_stage()
+
         return value
 
-    def evaluate_predicate(self, in_str, extra_vars=None):
+    def evaluate_predicate(self, in_str, extra_vars=None, merge_used_stage: bool = True):
         """Evaluate a predicate by expanding and evaluating math contained in a string
 
         Args:
@@ -579,7 +612,12 @@ class Expander:
             boolean: True or False, based on the evaluation of in_str
         """
 
-        evaluated = self.expand_var(in_str, extra_vars=extra_vars, allow_passthrough=False)
+        evaluated = self.expand_var(
+            in_str,
+            extra_vars=extra_vars,
+            allow_passthrough=False,
+            merge_used_stage=merge_used_stage,
+        )
 
         if not isinstance(evaluated, str):
             logger.die("Logical compute failed to return a string")
@@ -620,7 +658,7 @@ class Expander:
                     expansion_func=self._partial_expand,
                     evaluation_func=self.perform_math_eval,
                     no_expand_vars=self._no_expand_vars,
-                    used_vars=self._used_variables,
+                    used_vars=self._used_variable_stage,
                 )
 
             return str(str_graph.root.value)
@@ -657,40 +695,55 @@ class Expander:
         Some operators will generate floating point, while
         others will generate integers (if the inputs are integers).
         """
-        if isinstance(node, ast.Num):
-            return self._ast_num(node)
-        elif isinstance(node, ast.Constant):
-            return self._ast_constant(node)
-        elif isinstance(node, ast.Name):
-            return self._ast_name(node)
-        # TODO: Remove when we drop support for 3.6
-        # DEPRECATED: Remove due to python 3.8
-        # See: https://docs.python.org/3/library/ast.html#node-classes
-        elif isinstance(node, ast.Str):
-            return node.s
-        elif isinstance(node, ast.Attribute):
-            return self._ast_attr(node)
-        elif isinstance(node, ast.Compare):
-            return self._eval_comparisons(node)
-        elif isinstance(node, ast.BoolOp):
-            return self._eval_bool_op(node)
-        elif isinstance(node, ast.BinOp):
-            return self._eval_binary_ops(node)
-        elif isinstance(node, ast.UnaryOp):
-            return self._eval_unary_ops(node)
-        elif isinstance(node, ast.Call):
-            return self._eval_function_call(node)
-        else:
-            node_type = str(type(node))
-            raise MathEvaluationError(
-                f"Unsupported math AST node {node_type}:\n" + f"\t{node.__dict__}"
-            )
+        try:
+            if isinstance(node, ast.Num):
+                return self._ast_num(node)
+            elif isinstance(node, ast.Constant):
+                return self._ast_constant(node)
+            elif isinstance(node, ast.Name):
+                return self._ast_name(node)
+            # TODO: Remove when we drop support for 3.6
+            # DEPRECATED: Remove due to python 3.8
+            # See: https://docs.python.org/3/library/ast.html#node-classes
+            elif isinstance(node, ast.Str):
+                return node.s
+            elif isinstance(node, ast.Attribute):
+                return self._ast_attr(node)
+            elif isinstance(node, ast.Compare):
+                return self._eval_comparisons(node)
+            elif isinstance(node, ast.BoolOp):
+                return self._eval_bool_op(node)
+            elif isinstance(node, ast.BinOp):
+                return self._eval_binary_ops(node)
+            elif isinstance(node, ast.UnaryOp):
+                return self._eval_unary_ops(node)
+            elif isinstance(node, ast.Call):
+                return self._eval_function_call(node)
+            elif isinstance(node, ast.Subscript):
+                return self._eval_subscript_op(node)
+            else:
+                node_type = str(type(node))
+                raise MathEvaluationError(
+                    f"Unsupported math AST node {node_type}:\n" + f"\t{node.__dict__}"
+                )
+        except SyntaxError as e:
+            logger.debug(str(e))
+            raise e
 
     # Ast logic helper methods
     def __raise_syntax_error(self, node):
         node_type = str(type(node))
         raise RambleSyntaxError(
             f"Syntax error while processing {node_type} node:\n" + f"{node.__dict__}"
+        )
+
+    def __dbg_syntax_error(self, msg, node):
+        node_type = str(type(node))
+        raise SyntaxError(
+            self._ast_dbg_prefix
+            + f" {msg}\n"
+            + f"Occurred while processing {node_type} node:\n"
+            + f"{node.__dict__}"
         )
 
     def _ast_num(self, node):
@@ -753,16 +806,19 @@ class Expander:
             return result
 
         except TypeError:
-            raise SyntaxError("Unsupported operand type in boolean operator")
+            self.__dbg_syntax_error("Unsupported operand type in boolean operator", node)
         except KeyError:
-            raise SyntaxError("Unsupported boolean operator")
+            self.__dbg_syntax_error("Unsupported boolean operator", node)
 
     def _eval_comparisons(self, node):
         """Handle a comparison node in the ast"""
 
-        # Extract In nodes, and call their helper
-        if len(node.ops) == 1 and isinstance(node.ops[0], ast.In):
-            return self._eval_comp_in(node)
+        # Extract In or NotIn nodes, and call their helper
+        if len(node.ops) == 1 and isinstance(node.ops[0], (ast.In, ast.NotIn)):
+            is_in = self._eval_comp_in(node)
+            if isinstance(node.ops[0], ast.NotIn):
+                return not is_in
+            return is_in
 
         if len(node.ops) == 1 and isinstance(node.ops[0], ast.Is):
             raise RambleSyntaxError("Encountered unsupported operator `is`")
@@ -787,17 +843,17 @@ class Expander:
                     cur_left = cur_right
             return result
         except TypeError:
-            raise SyntaxError("Unsupported operand type in binary comparison operator")
+            self.__dbg_syntax_error("Unsupported operand type in binary comparison operator", node)
         except KeyError:
-            raise SyntaxError("Unsupported binary comparison operator")
+            self.__dbg_syntax_error("Unsupported binary comparison operator", node)
 
     def _eval_comp_in(self, node):
-        """Handle in nodes in the ast
+        """Handle in node in the ast
 
         Perform extraction of `<variable> in <experiment>` syntax.
         Raises an exception if the experiment does not exist.
 
-        Also, evaluated `<value> in [list, of, values]` syntax.
+        Also, evaluated `<value> in [list, of, values]` and `<value> in "str"` syntaxes.
         """
         if isinstance(node.left, ast.Name):
             var_name = self._ast_name(node.left)
@@ -812,11 +868,8 @@ class Expander:
                     )
                     self.__raise_syntax_error(node)
                 return val
-        # ast.Str was deprecated. short-circuit the test for it to avoid issues with newer python.
         # TODO: Remove `or` logic after 3.6 & 3.7 series python are unsupported
-        elif isinstance(node.left, ast.Constant) or (
-            hasattr(ast, "Str") and isinstance(node.left, ast.Str)
-        ):
+        elif isinstance(node.left, ast.Constant) or _safe_str_node_check(node.left):
             lhs_value = self.eval_math(node.left)
 
             found = False
@@ -826,6 +879,11 @@ class Expander:
                         rhs_value = self.eval_math(elt)
                         if lhs_value == rhs_value:
                             found = True
+                elif isinstance(comp, ast.Constant) or _safe_str_node_check(comp):
+                    # Attempt evaluating `"str" in "string"`
+                    rhs_value = self.eval_math(comp)
+                    if isinstance(rhs_value, str) and lhs_value in rhs_value:
+                        found = True
             return found
 
         self.__raise_syntax_error(node)
@@ -840,12 +898,12 @@ class Expander:
             right_eval = self.eval_math(node.right)
             op = supported_math_operators[type(node.op)]
             if isinstance(left_eval, str) or isinstance(right_eval, str):
-                raise SyntaxError("Unsupported operand type in binary operator")
+                self.__dbg_syntax_error("Unsupported operand type in binary operator", node)
             return op(left_eval, right_eval)
         except TypeError:
-            raise SyntaxError("Unsupported operand type in binary operator")
+            self.__dbg_syntax_error("Unsupported operand type in binary operator", node)
         except KeyError:
-            raise SyntaxError("Unsupported binary operator")
+            self.__dbg_syntax_error("Unsupported binary operator", node)
 
     def _eval_unary_ops(self, node):
         """Evaluate unary operators in the ast
@@ -855,13 +913,66 @@ class Expander:
         try:
             operand = self.eval_math(node.operand)
             if isinstance(operand, str):
-                raise SyntaxError("Unsupported operand type in unary operator")
+                self.__dbg_syntax_error("Unsupported operand type in unary operator", node)
             op = supported_math_operators[type(node.op)]
             return op(operand)
         except TypeError:
-            raise SyntaxError("Unsupported operand type in unary operator")
+            self.__dbg_syntax_error("Unsupported operand type in unary operator", node)
         except KeyError:
-            raise SyntaxError("Unsupported unary operator")
+            self.__dbg_syntax_error("Unsupported unary operator", node)
+
+    def _eval_subscript_op(self, node):
+        """Evaluate subscript operation in the ast"""
+        try:
+            operand = self.eval_math(node.value)
+            slice_node = node.slice
+
+            if isinstance(operand, str):
+                if isinstance(slice_node, ast.Slice):
+
+                    def _get_with_default(s_node, attr, default):
+                        v_node = getattr(s_node, attr)
+                        if v_node is None:
+                            return default
+                        return self.eval_math(v_node)
+
+                    lower = _get_with_default(slice_node, "lower", 0)
+                    upper = _get_with_default(slice_node, "upper", len(operand))
+                    step = _get_with_default(slice_node, "step", 1)
+                    return operand[slice(lower, upper, step)]
+                elif operand in self._variables and isinstance(self._variables[operand], dict):
+                    op_dict = self.expand_var_name(operand, typed=True)
+
+                    key = None
+                    # TODO: Remove after support for python 3.9 is dropped
+                    # DEPRECATED: ast.Index was dropped in python 3.9
+                    if hasattr(ast, "Index") and isinstance(slice_node, ast.Index):
+                        key = self.eval_math(slice_node.value)
+                    elif isinstance(slice_node, ast.Constant) or _safe_str_node_check(slice_node):
+                        key = self.eval_math(slice_node)
+
+                    if key is None:
+                        msg = (
+                            "During dictionary extraction, key is None. " + "Skipping extraction."
+                        )
+                        self.__dbg_syntax_error(msg, node)
+
+                    if key not in op_dict:
+                        msg = (
+                            f"Key {key} is not in dictionary {operand}. " + "Cannot extract value."
+                        )
+                        self.__dbg_syntax_error(msg, node)
+
+                    return op_dict[key]
+
+            msg = (
+                "Currently subscripts are only support "
+                + "for string slicing, and key extraction from dictionaries"
+            )
+            self.__dbg_syntax_error(msg, node)
+        except TypeError:
+            msg = "Unsupported operand type in subscript operator"
+            self.__dbg_syntax_error(msg, node)
 
 
 def raise_passthrough_error(in_str, out_str):

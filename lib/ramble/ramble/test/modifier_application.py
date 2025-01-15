@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -78,7 +78,7 @@ ramble:
 
         workspace("setup", "--dry-run", global_args=["-w", workspace_name])
 
-        software_path = os.path.join(ws1.software_dir, "wrfv4", "spack.yaml")
+        software_path = os.path.join(ws1.software_dir, "spack", "wrfv4", "spack.yaml")
         with open(software_path) as f:
             assert "intel-oneapi-vtune" in f.read()
 

@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -30,3 +30,13 @@ def get_file_path(path: str, workspace) -> str:
 def is_dry_run_path(path: str) -> bool:
     """Check if the path is already a dry_run path"""
     return str(path).startswith(_DRY_RUN_PATH_PREFIX)
+
+
+def create_symlink(base, link):
+    """
+    Create symlink of a file to give a known and predictable path
+    """
+    if os.path.islink(link):
+        os.unlink(link)
+
+    os.symlink(base, link)

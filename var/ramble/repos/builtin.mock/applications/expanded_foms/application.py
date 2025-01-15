@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -31,10 +31,10 @@ class ExpandedFoms(ExecutableApplication):
 
     figure_of_merit(
         "test_fom {var}",
-        fom_regex=r"Collect FOM (?P<var>\w+)\s=\s(?P<test>[0-9]+\.[0-9]+) seconds",
+        fom_regex=r"Collect FOM (?P<var>\w+)\s=\s(?P<test>[0-9]+\.[0-9]+) (?P<unit>\w+)",
         log_file="{log_file}",
         group_name="test",
-        units="s",
+        units="{unit}",
     )
 
     success_criteria("Run", mode="string", match=r"Collect", file="{log_file}")

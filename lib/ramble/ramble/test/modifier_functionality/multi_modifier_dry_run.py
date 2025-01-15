@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -19,6 +19,7 @@ from ramble.main import RambleCommand
 workspace = RambleCommand("workspace")
 
 
+@pytest.mark.long
 @pytest.mark.parametrize(
     "scopes",
     [
@@ -81,7 +82,7 @@ def test_gromacs_multi_modifier_dry_run(
         workspace("setup", "--dry-run", global_args=["-D", ws1.root])
 
         # Test software directories
-        software_base_dir = ws1.software_dir
+        software_base_dir = os.path.join(ws1.software_dir, "spack")
 
         modifier_helpers.check_software_env(software_base_dir, software_tests)
 

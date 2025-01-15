@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -14,7 +14,6 @@ import spack.util.spack_json as sjson
 import spack.util.url as surl
 
 import ramble.cmd
-import ramble.cmd.common.arguments
 import ramble.cmd.common.arguments as arguments
 
 import ramble.fetch_strategy
@@ -24,6 +23,8 @@ import ramble.workspace
 import ramble.workspace.shell
 import ramble.pipeline
 import ramble.filters
+from ramble.main import RambleCommand
+import ramble.util.path
 
 
 description = "(experimental) manage workspace deployments"
@@ -100,6 +101,7 @@ def deployment_pull_setup_parser(subparser):
         "-p",
         dest="deployment_path",
         help="Path to deployment that should be pulled",
+        required=True,
     )
 
 
@@ -117,8 +119,11 @@ def deployment_pull(args):
         # Fetch deployment index first:
         push_cls = ramble.pipeline.PushDeploymentPipeline
 
+        # Handle local relative path
+        deployment_path = ramble.util.path.normalize_path_or_url(args.deployment_path)
+
         remote_index_path = surl.join(
-            args.deployment_path, ramble.pipeline.PushDeploymentPipeline.index_filename
+            deployment_path, ramble.pipeline.PushDeploymentPipeline.index_filename
         )
         local_index_path = os.path.join(ws.root, push_cls.index_filename)
 
@@ -128,12 +133,19 @@ def deployment_pull(args):
             index_data = sjson.load(f)
 
         for file in index_data[push_cls.index_namespace]:
-            src = surl.join(args.deployment_path, file)
+            src = surl.join(deployment_path, file)
             dest = os.path.join(ws.root, file)
             if os.path.exists(dest):
                 fs.force_remove(dest)
 
             pull_file(src, dest)
+
+        obj_repo_path = os.path.join(
+            ws.root, ramble.pipeline.PushDeploymentPipeline.object_repo_name
+        )
+        if os.path.exists(obj_repo_path):
+            repo_cmd = RambleCommand("repo")
+            repo_cmd("add", obj_repo_path, global_args=["-D", ws.root])
 
 
 def deployment_run_pipeline(args, pipeline):

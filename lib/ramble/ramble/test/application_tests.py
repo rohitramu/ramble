@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -189,6 +189,15 @@ def test_register_builtin_app(mutable_mock_apps_repo):
         for builtin in excluded_builtins:
             assert exec_graph.get_node(builtin) is None
 
+        # Test for dependency injection
+        found_prerequisite = False
+        for node in exec_graph.walk():
+            if node.key == "builtin::test_builtin":
+                break
+            if node.key == "builtin::test_builtin_pre":
+                found_prerequisite = True
+        assert found_prerequisite
+
 
 @pytest.mark.parametrize(
     "app", ["basic", "basic-inherited", "input-test", "interleved-env-vars", "register-builtin"]
@@ -325,7 +334,7 @@ def test_set_input_path(mutable_mock_apps_repo):
 
     executable_application_instance._set_input_path()
 
-    default_answer = "/workspace/inputs/bar/test_wl2/input"
+    default_answer = "/workspace/inputs/bar/test_wl2/test_file.log"
 
     assert executable_application_instance.variables["input"] == default_answer
 
@@ -349,8 +358,8 @@ def test_set_input_path_multi_input(mutable_mock_apps_repo):
 
     executable_application_instance._set_input_path()
 
-    input1_path = "/workspace/inputs/bar/test_wl2/test-input1"
-    input2_path = "/workspace/inputs/bar/test_wl2/test-input2"
+    input1_path = "/workspace/inputs/bar/test_wl2/input1"
+    input2_path = "/workspace/inputs/bar/test_wl2/input2"
     input3_path = "/workspace/inputs/bar/test_wl2/input3.txt"
 
     assert executable_application_instance.variables["test-input1"] == input1_path

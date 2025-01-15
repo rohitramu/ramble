@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -17,16 +17,16 @@ ramble:
   applications:
     wrfv4:
       success_criteria:
-      - name: 'timing-present'
-        mode: 'string'
-        match: 'Timing for main.*'
+      - name: timing-present
+        mode: string
+        match: Timing for main.*
         file: '{experiment_run_dir}/rsl.out.0000'
       workloads:
         CONUS_12km:
           success_criteria:
-          - name: 'correct-timesteps'
-            mode: 'fom_comparison'
-            fom_name: 'Number of timesteps'
+          - name: correct-timesteps
+            mode: fom_comparison
+            fom_name: Number of timesteps
             formula: '{value} >= 50'
           experiments:
             scaling_{n_nodes}:

@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -157,6 +157,14 @@ class Renderer:
 
         object_variables = {}
         expander = ramble.expander.Expander(variables, None)
+
+        # Convert all dict types to base dicts
+        # This allows the expander to properly return typed dicts.
+        # Without this, all dicts are ruamel.CommentedMaps, and these
+        # cannot be evaled using ast.literal_eval
+        for var, val in variables.items():
+            if isinstance(val, dict):
+                variables[var] = dict(val)
 
         # Expand all variables that generate lists
         for name, unexpanded in variables.items():

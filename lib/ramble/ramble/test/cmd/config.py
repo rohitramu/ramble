@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -685,7 +685,7 @@ ramble:  # comment
               variables:
                 n_ranks: '1'
                 n_nodes: '1'
-                processors_per_node: '1'
+                processes_per_node: '1'
 """
     with open(filepath, "w") as f:
         f.write(contents)
@@ -714,7 +714,7 @@ def test_config_remove_from_workspace(mutable_empty_config, mutable_mock_workspa
         config("rm", "config:dirty")
         output = config("get")
 
-    expected = ramble.workspace.default_config_yaml()
+    expected = ramble.workspace.Workspace._default_config_yaml()
     expected += """  config: {}
 """
     for line in io.StringIO(expected).readlines():

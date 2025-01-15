@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -56,10 +56,16 @@ class Ior(ExecutableApplication):
         description="Segment Count",
         workloads=["multi-file", "single-file"],
     )
+    workload_variable(
+        "additional_args",
+        default="",
+        description="Additional args to pass",
+        workloads=["multi-file", "single-file"],
+    )
 
     executable(
         name="ior",
-        template="ior -t {transfer-size} -b {block-size} -s {segment-count} -i {iterations}",
+        template="ior -t {transfer-size} -b {block-size} -s {segment-count} -i {iterations} {additional_args}",
         use_mpi=True,
     )
     executable(name="ior-shared", template="{ior_path} -F", use_mpi=True)

@@ -1,4 +1,4 @@
-# Copyright 2022-2024 The Ramble Authors
+# Copyright 2022-2025 The Ramble Authors
 #
 # Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -8,6 +8,7 @@
 
 import os
 
+import ramble.config
 from ramble.appkit import *
 import spack.util.executable
 
@@ -46,7 +47,13 @@ class SpackStack(ExecutableApplication):
     executable("install", "spack install {install_flags}", use_mpi=True)
     workload(
         "create",
-        executables=["builtin::remove_env_files", "configure", "install"],
+        executables=[
+            "builtin::remove_env_files",
+            "builtin::find_externals",
+            "configure",
+            "install",
+            "builtin::remove_packages",
+        ],
     )
 
     executable("uninstall", "spack uninstall {uninstall_flags}", use_mpi=True)
@@ -62,8 +69,22 @@ class SpackStack(ExecutableApplication):
 
     workload_variable(
         "install_flags",
-        default="",
+        default="--fail-fast",
         description="Flags to use for `spack install`",
+        workloads=["create"],
+    )
+
+    workload_variable(
+        "external_packages",
+        default=[],
+        description="List of packages to `spack external find` and mark not buildable",
+        workloads=["create"],
+    )
+
+    workload_variable(
+        "removed_packages",
+        default=[],
+        description="List of packages to remove from the environment after installation is complete",
         workloads=["create"],
     )
 
@@ -133,6 +154,56 @@ class SpackStack(ExecutableApplication):
         cmds = ["rm -f {env_path}/spack.lock", "rm -rf {env_path}/.spack-env"]
         return cmds
 
+    register_builtin("find_externals", required=False)
+
+    def find_externals(self):
+        """Inject commands to find external non buildable packages
+
+        This allows spack find external system packages before building,
+        to ensure system packages are used for some dependencies.
+        """
+        cmds = []
+
+        # Package finding is only supported in bash or sh
+        if ramble.config.get("config:shell") in ["sh", "bash"]:
+            # Do not expand the `external_packages` variable, so it will not be
+            # used to render experiments.
+            external_packages = self.expander.expand_var_name(
+                "external_packages", merge_used_stage=False, typed=True
+            )
+            self.expander.flush_used_variable_stage()
+            for pkg in external_packages:
+                cmds.append(f"spack external find --not-buildable {pkg}")
+        return cmds
+
+    register_builtin("remove_packages", required=False)
+
+    def remove_packages(self):
+        """Inject command to uninstall selected packages.
+
+        This allows spack to omit some packages from a buildcache by
+        uninstalling them after the whole environment is installed.
+        """
+        cmds = []
+
+        # Package removal is only supported in bash or sh
+        if ramble.config.get("config:shell") in ["sh", "bash"]:
+            # Do not expand the `removed_packages` variable, so it will not be
+            # used to render experiments.
+            packages_to_remove = self.expander.expand_var_name(
+                "removed_packages", merge_used_stage=False, typed=True
+            )
+            self.expander.flush_used_variable_stage()
+            for pkg in packages_to_remove:
+                cmds.append(
+                    f'grep "{pkg}" ' + "{env_path}/spack.yaml &> /dev/null"
+                )
+                cmds.append("if [ $? -eq 0 ]; then")
+                cmds.append(f"  spack uninstall {pkg}")
+                cmds.append(f"  spack remove {pkg}")
+                cmds.append("fi")
+        return cmds
+
     def evaluate_success(self):
         import spack.util.spack_yaml as syaml
 
@@ -149,7 +220,7 @@ class SpackStack(ExecutableApplication):
         if not os.path.isfile(spack_file):
             return False
 
-        with open(spack_file, "r") as f:
+        with open(spack_file) as f:
             spack_data = syaml.load_config(f)
 
         tty.debug(f"Spack data: {spack_data}")
