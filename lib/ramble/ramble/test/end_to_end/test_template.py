@@ -58,6 +58,9 @@ ramble:
         content = f.read()
         assert script_path in content
 
+    script_path = os.path.join(ws.shared_dir, "script.sh")
+    assert os.path.isfile(script_path)
+
 
 def test_template_inherited():
     test_config = """
@@ -93,3 +96,6 @@ ramble:
     with open(execute_path) as f:
         content = f.read()
         assert script_path in content
+
+    script_path = os.path.join(ws.shared_dir, "script.sh")
+    assert os.path.isfile(script_path)

@@ -48,6 +48,7 @@ import ramble.util.directives
 import ramble.util.stats
 import ramble.util.graph
 import ramble.util.class_attributes
+import ramble.util.path
 import ramble.util.lock as lk
 from ramble.util.foms import FomType
 from ramble.util.logger import logger
@@ -1389,7 +1390,7 @@ class ApplicationBase(metaclass=ApplicationMeta):
                     )
                 os.chmod(expand_path, _DEFAULT_CONTENT_PERM)
 
-            self._render_object_templates(exec_vars)
+            self._render_object_templates(exec_vars, replacement_vars=workspace.workspace_paths())
 
             experiment_script = workspace.experiments_script
             experiment_script.write(self.expander.expand_var("{batch_submit}\n"))
@@ -2311,8 +2312,11 @@ class ApplicationBase(metaclass=ApplicationMeta):
             for tpl_conf in obj.templates.values():
                 yield _get_template_config(obj, tpl_conf, obj_type=obj_type)
 
-    def _render_object_templates(self, extra_vars):
+    def _render_object_templates(self, extra_vars, replacement_vars=None):
         run_dir = self.expander.experiment_run_dir
+        replacements = {}
+        if replacement_vars is not None:
+            replacements = replacement_vars
         for obj, tpl_config in self._object_templates():
             src_path = tpl_config["src_path"]
             with open(src_path) as f_in:
@@ -2325,7 +2329,11 @@ class ApplicationBase(metaclass=ApplicationMeta):
                 extra_vars_func = getattr(obj, extra_vars_func_name)
                 extra_vars.update(extra_vars_func())
             rendered = self.expander.expand_var(content, extra_vars=extra_vars)
-            out_path = os.path.join(run_dir, tpl_config["dest_name"])
+            out_path = ramble.util.path.substitute_path_variables(
+                tpl_config["dest_name"], local_replacements=replacements
+            )
+            if not os.path.isabs(out_path):
+                out_path = os.path.join(run_dir, out_path)
             perm = tpl_config.get("content_perm", _DEFAULT_CONTENT_PERM)
             with open(out_path, "w+") as f_out:
                 f_out.write(rendered)

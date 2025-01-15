@@ -41,3 +41,10 @@ class Template(ExecutableApplication):
         expander = self.expander
         val = expander.expand_var('"hello {hello_name}"')
         return {"dynamic_hello_world": val}
+
+    register_template(
+        name="test",
+        src_name="script.sh",
+        dest_name="$workspace_shared/script.sh",
+        output_perm="755",
+    )
