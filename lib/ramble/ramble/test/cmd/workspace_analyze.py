@@ -7,7 +7,6 @@
 # except according to those terms.
 
 import os
-import time
 
 import pytest
 
@@ -27,6 +26,7 @@ workspace = RambleCommand("workspace")
 on = RambleCommand("on")
 
 
+@pytest.mark.maybeslow
 def test_analyze_with_fom_filter(workspace_name):
     global_args = ["-w", workspace_name]
     ws1 = ramble.workspace.create(workspace_name)
@@ -72,6 +72,7 @@ def test_analyze_with_fom_filter(workspace_name):
     assert "No experiment left for analysis after filtering." in out
 
 
+@pytest.mark.maybeslow
 def test_workspace_analyze_results_cache(workspace_name):
     global_args = ["-w", workspace_name]
     ws = ramble.workspace.create(workspace_name)
@@ -125,7 +126,6 @@ def test_workspace_analyze_results_cache(workspace_name):
     assert res1["experiments"][0]["CONTEXTS"][0]["foms"][0]["value"] == "test"
 
     # Second analyze: should read from cache
-    time.sleep(0.01)
     workspace("analyze", "-f", "json", global_args=global_args)
 
     with open(results_json, encoding="utf-8") as f:
@@ -140,11 +140,11 @@ def test_workspace_analyze_results_cache(workspace_name):
     assert "Reading experiment results from cache file" in log_content
 
     # Invalidate cache by modifying log file with newer timestamp
-    time.sleep(0.05)
+    cache_mtime = os.path.getmtime(cache_file)
+    os.utime(cache_file, (cache_mtime - 2, cache_mtime - 2))
     with open(log_file, "w", encoding="utf-8") as f:
         f.write("fom: test_updated\n")
 
-    time.sleep(0.01)
     workspace("analyze", "-f", "json", global_args=global_args)
 
     with open(results_json, encoding="utf-8") as f:
@@ -179,12 +179,12 @@ def test_workspace_analyze_results_cache(workspace_name):
     # Success criteria should fail because log.file is missing
     assert res5["experiments"][0]["EXPERIMENT_STATUS"] == "FAILED"
 
-    # Recreate log file with new FOM (sleep to ensure newer timestamp than cache)
-    time.sleep(0.05)
+    # Recreate log file with new FOM (simulate older cache)
+    cache_mtime = os.path.getmtime(cache_file)
+    os.utime(cache_file, (cache_mtime - 2, cache_mtime - 2))
     with open(log_file, "w", encoding="utf-8") as f:
         f.write("fom: test_restored\n")
 
-    time.sleep(0.01)
     workspace("analyze", "-f", "json", global_args=global_args)
     with open(results_json, encoding="utf-8") as f:
         res6 = json_util.load(f)
