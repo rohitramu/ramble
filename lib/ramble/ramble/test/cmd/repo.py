@@ -221,3 +221,54 @@ def test_repo_list_no_results_warning(mutable_empty_config):
     out = repo("list", "--scope=site", output=str)
     assert repo.returncode == 0
     assert "No repositories found in scope 'site'" in out
+
+
+def test_repo_list_compact(mutable_config, tmpdir):
+    repo_path = str(tmpdir.join("compact_repo"))
+    repo("create", repo_path, "compact_ns")
+    repo("add", "--scope=site", repo_path)
+
+    output = repo("list", "--format=compact", output=str)
+
+    assert "NAMESPACE" in output
+    assert "TYPES" in output
+    assert "PATH" in output
+    assert "compact_ns" in output
+
+    # Ensure the repo appears only once in the compact output
+    assert output.count("compact_ns") == 1
+
+
+def test_repo_list_full_format_is_unchanged(mutable_config, tmpdir):
+    """The full (default) format should not print the compact table headers."""
+    repo_path = str(tmpdir.join("full_repo"))
+    repo("create", repo_path, "full_ns")
+    repo("add", "--scope=site", repo_path)
+
+    implicit = repo("list", output=str)
+    explicit = repo("list", "--format=full", output=str)
+
+    assert implicit == explicit
+    assert "NAMESPACE" not in implicit
+    assert "full_ns" in implicit
+    # The repo is registered for every object type, so it repeats in this format
+    assert implicit.count("full_ns") > 1
+
+
+def test_repo_list_compact_specific_type(mutable_config, tmpdir):
+    repo_path = str(tmpdir.join("app_only_repo"))
+    repo("create", repo_path, "app_ns", "-t", "applications")
+    repo("add", "-t", "applications", "--scope=site", repo_path)
+
+    output = repo("list", "-t", "applications", "--format=compact", output=str)
+    assert "NAMESPACE" in output
+    assert "TYPES" in output
+    assert "PATH" in output
+    assert "app_ns" in output
+    assert output.count("app_ns") == 1
+
+
+def test_repo_list_compact_empty(mutable_empty_config):
+    output = repo("list", "--format=compact", output=str)
+    assert repo.returncode == 0
+    assert "No repositories found" in output
