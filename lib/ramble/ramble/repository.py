@@ -1220,7 +1220,9 @@ class Repo:
             # handler by wrapping them
             if ramble.config.get("config:debug"):
                 sys.excepthook(*sys.exc_info())
-            raise FailedConstructorError(spec.fullname, *sys.exc_info()) from e
+            raise FailedConstructorError(
+                spec.fullname, *sys.exc_info(), object_type=self.object_type
+            ) from e
 
     @autospec
     def dump_provenance(self, spec, path):
@@ -1654,8 +1656,14 @@ class FailedConstructorError(RepoError):
     """Raised when an object's class constructor fails."""
 
     def __init__(self, name, exc_type, exc_obj, exc_tb, object_type=None):
+        if object_type:
+            if object_type in type_definitions:
+                object_type = type_definitions[object_type]["singular"]
+            msg = f"Class constructor failed for {object_type} '{name}'."
+        else:
+            msg = f"Class constructor failed for '{name}'."
         super().__init__(
-            f"Class constructor failed for {object_type} '%s'." % name,
+            msg,
             "\nCaused by:\n"
             + (f"{exc_type.__name__}: {exc_obj}\n")
             + "".join(traceback.format_tb(exc_tb)),
