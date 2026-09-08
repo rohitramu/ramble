@@ -261,6 +261,16 @@ def test_workspace_list(mutable_mock_workspace_path):
     assert ".DS_Store" not in out
 
 
+def test_workspace_list_empty(mutable_mock_workspace_path):
+    out = workspace("list")
+    assert workspace.returncode == 0
+    assert "No workspaces found." in out
+
+    out = workspace("list", "--merged")
+    assert workspace.returncode == 0
+    assert "No workspaces found." in out
+
+
 def test_workspace_info(workspace_name):
     global_args = ["-w", workspace_name]
     ws1 = ramble.workspace.create(workspace_name)

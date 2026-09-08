@@ -207,3 +207,17 @@ def test_repo_list_multitype_non_application_scope(mutable_empty_config, tmpdir)
 
     output = repo("list", output=str)
     assert "mockmodrepo" in output
+
+
+def test_repo_list_no_results_warning(mutable_empty_config):
+    out = repo("list", output=str)
+    assert repo.returncode == 0
+    assert "No repositories found" in out
+
+    out = repo("list", "-t", "modifiers", output=str)
+    assert repo.returncode == 0
+    assert "No modifiers repositories found" in out
+
+    out = repo("list", "--scope=site", output=str)
+    assert repo.returncode == 0
+    assert "No repositories found in scope 'site'" in out

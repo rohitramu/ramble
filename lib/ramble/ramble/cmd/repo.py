@@ -319,6 +319,7 @@ def repo_list(args):
     else:
         obj_types = [ramble.repository.ObjectTypes[args.type]]
 
+    total_repos = 0
     for obj_type in obj_types:
         type_def = ramble.repository.type_definitions[obj_type]
 
@@ -330,7 +331,9 @@ def repo_list(args):
             except ramble.repository.RepoError:
                 continue
 
-        if sys.stdout.isatty():
+        total_repos += len(repos)
+
+        if sys.stdout.isatty() and repos:
             msg = f"{len(repos)} {obj_type.name} repositor"
             msg += "y." if len(repos) == 1 else "ies."
             logger.msg(msg)
@@ -342,6 +345,15 @@ def repo_list(args):
         for repo in repos:
             fmt = "%%-%ds%%s" % (max_ns_len + 4)
             print(fmt % (repo.namespace, repo.root))
+
+    if total_repos == 0:
+        scope_str = f" in scope '{args.scope}'" if args.scope else ""
+        if args.type == "any":
+            logger.warn(f"No repositories found{scope_str}.")
+        else:
+            logger.warn(f"No {args.type} repositories found{scope_str}.")
+
+    return 0
 
 
 def repo(parser, args):
@@ -356,4 +368,4 @@ def repo(parser, args):
     if args.type != "any":
         args.type = ramble.repository.simplify_object_type(args.type).name
 
-    action[args.repo_command](args)
+    return action[args.repo_command](args)
