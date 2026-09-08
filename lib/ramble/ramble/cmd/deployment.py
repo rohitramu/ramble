@@ -11,15 +11,8 @@ from typing import Callable, Dict
 
 import llnl.util.filesystem as fs
 
-import ramble.cmd
 import ramble.cmd.common
 import ramble.config
-import ramble.fetch_strategy
-import ramble.filters
-import ramble.pipeline
-import ramble.repository
-import ramble.stage
-import ramble.util.path
 from ramble.cmd.common import arguments
 from ramble.main import RambleCommand
 from ramble.util import json_util
@@ -78,6 +71,10 @@ def deployment_push_setup_parser(subparser):
 
 
 def deployment_push(args):
+    import ramble.cmd
+    import ramble.filters
+    import ramble.pipeline
+
     current_pipeline = ramble.pipeline.pipelines.pushdeployment
     ws = ramble.cmd.require_active_workspace(cmd_name="deployment push")
 
@@ -117,6 +114,12 @@ def deployment_pull_setup_parser(subparser):
 
 
 def deployment_pull(args):
+    import ramble.cmd
+    import ramble.fetch_strategy
+    import ramble.pipeline
+    import ramble.stage
+    import ramble.util.path
+
     def pull_file(src, dest):
         fetcher = ramble.fetch_strategy.URLFetchStrategy(url=src)
         stage_dir = os.path.dirname(dest)
