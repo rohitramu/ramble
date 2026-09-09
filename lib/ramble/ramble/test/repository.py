@@ -250,3 +250,42 @@ def test_namespace_nonexistent_attribute(mutable_mock_apps_repo):
     assert getattr(app_ns, "nonexistent_subnamespace", None) is None
     with pytest.raises(AttributeError):
         _ = app_ns.nonexistent_subnamespace
+
+
+def test_failed_constructor_error_message():
+    try:
+        raise ValueError("test exception message")
+    except ValueError:
+        exc_info = sys.exc_info()
+
+    # Without object_type
+    err = ramble.repository.FailedConstructorError("my_obj", *exc_info)
+    assert "Class constructor failed for 'my_obj'." in str(err)
+    assert "ValueError: test exception message" in str(err)
+    assert "None" not in str(err)
+    assert "%s" not in str(err)
+
+    # With string object_type
+    err_str = ramble.repository.FailedConstructorError("my_obj", *exc_info, object_type="modifier")
+    assert "Class constructor failed for modifier 'my_obj'." in str(err_str)
+
+    # With ObjectTypes enum
+    err_enum = ramble.repository.FailedConstructorError(
+        "my_obj", *exc_info, object_type=ramble.repository.ObjectTypes.applications
+    )
+    assert "Class constructor failed for application 'my_obj'." in str(err_enum)
+
+
+def test_repo_get_raises_failed_constructor_error(mutable_mock_apps_repo, monkeypatch):
+    def failing_constructor(*args, **kwargs):
+        raise TypeError("simulated constructor failure")
+
+    repo = mutable_mock_apps_repo.repo_for_obj("basic")
+    monkeypatch.setattr(repo, "get_obj_class", lambda name: failing_constructor)
+
+    with pytest.raises(ramble.repository.FailedConstructorError) as exc_info:
+        mutable_mock_apps_repo.get("basic")
+
+    err_msg = str(exc_info.value)
+    assert "Class constructor failed for application 'basic'." in err_msg
+    assert "TypeError: simulated constructor failure" in err_msg
