@@ -17,7 +17,7 @@ resource "google_cloudbuild_trigger" "pr_unit_tests" {
   description = "Run unit tests and linting on Ramble pull requests"
 
   repository_event_config {
-    repository = "projects/${var.project_id}/locations/${google_cloudbuild_worker_pool.unit_test_pool.location}/connections/RambleCI-SA-W1/repositories/${var.github_owner}-${var.github_repo}"
+    repository = "projects/${var.project_id}/locations/${google_cloudbuild_worker_pool.unit_test_pool.location}/connections/Ramble-SAW1/repositories/${var.github_owner}-${var.github_repo}"
     pull_request {
       branch          = "(?:main|develop)"
       comment_control = "COMMENTS_ENABLED_FOR_EXTERNAL_CONTRIBUTORS_ONLY"
