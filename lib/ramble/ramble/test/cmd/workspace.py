@@ -133,8 +133,9 @@ def test_workspace_create_links(mutable_mock_workspace_path, tmpdir):
 
 def test_workspace_activate_fails(mutable_mock_workspace_path):
     workspace("create", "foo")
-    out = workspace("activate", "foo")
+    out = workspace("activate", "foo", fail_on_error=False)
     assert "To set up shell support" in out
+    assert workspace.returncode == 1
 
 
 def test_workspace_activate_prompt(workspace_name, monkeypatch):
@@ -230,6 +231,7 @@ def test_workspace_deactivate(workspace_name, working_env):
     # Test deactivation fails without shell args
     output = workspace("deactivate", fail_on_error=False)
     assert "To set up shell support" in output
+    assert workspace.returncode == 1
 
     # Test deactivation fails with ambiguous flags
     ramble.workspace.activate(ws)
