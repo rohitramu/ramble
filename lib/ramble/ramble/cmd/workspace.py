@@ -168,7 +168,7 @@ def workspace_activate(args):
         ramble.cmd.common.shell_init_instructions(
             "ramble workspace activate", "    eval `ramble workspace activate {sh_arg} [...]`"
         )
-        return 1
+        sys.exit(1)
 
     workspace_name_or_dir = args.activate_workspace or args.dir
 
@@ -257,7 +257,7 @@ def workspace_deactivate(args):
             "ramble workspace deactivate",
             "    eval `ramble workspace deactivate {sh_arg}`",
         )
-        return 1
+        sys.exit(1)
 
     # Error out when -w, -W, -D flags are given, cause they are ambiguous.
     if args.workspace or args.no_workspace or args.workspace_dir:
