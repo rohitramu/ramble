@@ -26,6 +26,7 @@ resource "google_cloudbuild_trigger" "codecov_pr" {
     local.core_source_files,
     local.dependency_and_config_files,
     [
+      ".github/codecov.yml",
       "share/ramble/cloud-build/**",
       "share/ramble/qa/**"
     ]
