@@ -8,6 +8,7 @@
 
 import pytest
 
+import ramble.error
 import ramble.workspace
 from ramble.main import RambleCommand
 
@@ -178,3 +179,75 @@ def test_remove_modifier_valid_index_removes_expected(
     remaining = ws.index_modifiers()
     assert len(remaining) == 1
     assert remaining[0][1]["name"] == expected_remaining
+
+
+def test_add_modifier_without_scope_uses_workspace_scope(workspace_name):
+    """``--scope`` is optional when adding, and defaults to the workspace scope."""
+    ws = ramble.workspace.create(workspace_name)
+    ws.write()
+
+    workspace(
+        "manage",
+        "modifiers",
+        "--add",
+        "--name",
+        "lscpu",
+        global_args=["-w", workspace_name],
+    )
+
+    ws._re_read()
+    assert ws.index_modifiers() == [("workspace", {"name": "lscpu"})]
+
+
+def test_add_modifier_unknown_name_errors(workspace_name):
+    """An unmatched name pattern is a fatal error, not a warning plus a no-op."""
+    ws = ramble.workspace.create(workspace_name)
+    ws.write()
+
+    with pytest.raises(ramble.workspace.RambleWorkspaceError, match="No modifiers found matching"):
+        workspace(
+            "manage",
+            "modifiers",
+            "--add",
+            "--name",
+            "definitely-no-such-modifier",
+            "--scope",
+            "workspace",
+            global_args=["-w", workspace_name],
+        )
+
+    # A rejected add must leave the config completely untouched, including
+    # not creating an empty `modifiers` list.
+    ws._re_read()
+    assert ws.index_modifiers() == []
+    with open(ws.config_file_path, encoding="utf-8") as f:
+        assert "modifiers" not in f.read()
+
+
+def test_add_modifier_without_name_errors(workspace_name):
+    """Adding without a name pattern is rejected at the CLI layer."""
+    ws = ramble.workspace.create(workspace_name)
+    ws.write()
+
+    with pytest.raises(ramble.error.RambleCommandError, match="requires --name"):
+        workspace(
+            "manage",
+            "modifiers",
+            "--add",
+            "--scope",
+            "workspace",
+            global_args=["-w", workspace_name],
+        )
+
+    ws._re_read()
+    assert ws.index_modifiers() == []
+
+
+@pytest.mark.parametrize("name_pattern", [None, "", 1, ["lscpu"]])
+def test_add_modifier_invalid_name_pattern_errors(workspace_name, name_pattern):
+    """The method guards its own preconditions, for callers bypassing the CLI."""
+    ws = ramble.workspace.create(workspace_name)
+    ws.write()
+
+    with pytest.raises(ramble.workspace.RambleWorkspaceError, match="without a name pattern"):
+        ws.add_modifier(name_pattern=name_pattern, scope="workspace")
