@@ -357,7 +357,9 @@ done
 
 # Add programmable tab completion for Bash
 #
-if [ "$_rmb_shell" = bash ]; then
+# The completion script is written for Bash, but it bootstraps zsh's
+# bash-completion compatibility layer (bashcompinit) when sourced from zsh.
+if test "$_rmb_shell" = bash || test -n "${ZSH_VERSION:-}"; then
     source $_rmb_share_dir/ramble-completion.bash
     # The custom version includes support for command aliases, it is
     # generated via `ramble commands --update-completion`.
