@@ -2404,9 +2404,12 @@ ramble:
         """Remove an arbitrary number of modifiers from this workspace based
         on some input arguments.
 
+        Modifiers are selected either by index or by pattern, never both.
+
         Args:
             remove_index: Index of modifier to remove. Indices match ordering
-                          from the output of print_modifiers
+                          from the output of print_modifiers. Cannot be
+                          combined with the pattern arguments.
             scope_pattern: Pattern to select which scopes to remove modifiers from.
                            If the pattern matches multiple scopes, each will
                            have matching modifiers removed from them.
@@ -2422,6 +2425,22 @@ ramble:
         Returns:
             int: Number of modifiers removed
         """
+        given_patterns = [
+            arg_name
+            for arg_name, pattern in (
+                ("scope_pattern", scope_pattern),
+                ("name_pattern", name_pattern),
+                ("mode_pattern", mode_pattern),
+            )
+            if pattern is not None
+        ]
+
+        if remove_index is not None and given_patterns:
+            raise RambleWorkspaceError(
+                "Modifiers can be removed by index or by pattern, but not both. "
+                f"Given index {remove_index!r} along with {', '.join(given_patterns)}."
+            )
+
         mod_list = self.index_modifiers()
         to_remove = []
 

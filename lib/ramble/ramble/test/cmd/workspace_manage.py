@@ -138,6 +138,43 @@ def test_remove_modifier_out_of_range_index_errors(workspace_name, remove_index)
     assert len(ws.index_modifiers()) == 2
 
 
+def test_remove_modifier_out_of_range_index_messages(workspace_name):
+    """Out-of-range error messages format singular vs plural ranges correctly."""
+    ws = ramble.workspace.create(workspace_name)
+    ws.write()
+    global_args = ["-w", workspace_name]
+
+    workspace(
+        "manage",
+        "modifiers",
+        "--add",
+        "--name",
+        "lscpu",
+        "--scope",
+        "workspace",
+        global_args=global_args,
+    )
+    ws._re_read()
+
+    with pytest.raises(ramble.workspace.RambleWorkspaceError, match=r"Valid index is 0\."):
+        ws.remove_modifier(remove_index=1)
+
+    workspace(
+        "manage",
+        "modifiers",
+        "--add",
+        "--name",
+        "ethtool",
+        "--scope",
+        "workspace",
+        global_args=global_args,
+    )
+    ws._re_read()
+
+    with pytest.raises(ramble.workspace.RambleWorkspaceError, match=r"Valid indices are 0-1\."):
+        ws.remove_modifier(remove_index=2)
+
+
 def test_remove_modifier_index_on_empty_workspace_errors(workspace_name):
     """Removing by index with no modifiers defined gives a clear error."""
     ws = ramble.workspace.create(workspace_name)
@@ -251,3 +288,45 @@ def test_add_modifier_invalid_name_pattern_errors(workspace_name, name_pattern):
 
     with pytest.raises(ramble.workspace.RambleWorkspaceError, match="without a name pattern"):
         ws.add_modifier(name_pattern=name_pattern, scope="workspace")
+
+
+@pytest.mark.parametrize(
+    "pattern_args",
+    [
+        ["--scope", "workspace"],
+        ["--name", "lscpu"],
+        ["--mode", "standard"],
+        ["--scope", "workspace", "--name", "lscpu"],
+    ],
+)
+def test_remove_modifier_index_with_pattern_errors(workspace_name, pattern_args):
+    """Index and pattern selection are alternatives, not a union.
+
+    Combining them used to remove every pattern-matching modifier in addition
+    to the indexed one.
+    """
+    ws = _workspace_with_two_modifiers(workspace_name)
+
+    with pytest.raises(ramble.error.RambleCommandError, match="not both"):
+        workspace(
+            "manage",
+            "modifiers",
+            "--remove",
+            "--mod-index",
+            "0",
+            *pattern_args,
+            global_args=["-w", workspace_name],
+        )
+
+    ws._re_read()
+    assert [mod[1]["name"] for mod in ws.index_modifiers()] == _TEST_MODIFIERS
+
+
+def test_remove_modifier_index_with_pattern_api_errors(workspace_name):
+    """The method rejects the combination for callers bypassing the CLI."""
+    ws = _workspace_with_two_modifiers(workspace_name)
+
+    with pytest.raises(ramble.workspace.RambleWorkspaceError, match="not both"):
+        ws.remove_modifier(remove_index=0, scope_pattern="workspace")
+
+    assert len(ws.index_modifiers()) == 2
