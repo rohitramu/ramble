@@ -13,6 +13,7 @@ import sys
 import ramble.cmd.common.arguments
 import ramble.config
 import ramble.repository
+import ramble.util.colors as color
 from ramble.util.logger import logger
 
 description = "manage Ramble repositories"
@@ -64,6 +65,12 @@ def setup_parser(subparser):
         metavar=scopes_metavar,
         default=ramble.config.default_list_scope(),
         help="configuration scope to read from",
+    )
+    list_parser.add_argument(
+        "--format",
+        choices=["full", "compact"],
+        default="compact",
+        help="format to be used to print the output (default: compact)",
     )
     ramble.cmd.common.arguments.add_common_arguments(list_parser, ["repo_type"])
 
@@ -312,6 +319,34 @@ def repo_remove(args):
         )
 
 
+def format_types(types_list):
+    """Summarize a list of object types compactly."""
+    if not types_list:
+        return "none"
+
+    all_obj_types = list(ramble.repository.ObjectTypes)
+    all_type_names = {obj_type.name for obj_type in all_obj_types}
+    non_util_type_names = {
+        obj_type.name for obj_type in all_obj_types if "util" not in obj_type.name
+    }
+
+    types_set = set(types_list)
+    if types_set == all_type_names:
+        return "all"
+    if types_set == non_util_type_names:
+        return "all (non-utility)"
+    if len(types_list) <= 3:
+        return ", ".join(types_list)
+    abbrevs = [
+        ramble.repository.type_definitions[ramble.repository.ObjectTypes[t]]["abbrev"]
+        for t in types_list
+    ]
+    abbrev_str = ", ".join(abbrevs)
+    if len(abbrev_str) <= 35:
+        return abbrev_str
+    return f"{len(types_list)} types"
+
+
 def repo_list(args):
     """Show registered repositories and their namespaces."""
     if args.type == "any":
@@ -319,32 +354,93 @@ def repo_list(args):
     else:
         obj_types = [ramble.repository.ObjectTypes[args.type]]
 
-    total_repos = 0
-    for obj_type in obj_types:
-        type_def = ramble.repository.type_definitions[obj_type]
+    is_compact = args.format == "compact"
 
-        roots = ramble.config.get(type_def["config_section"], scope=args.scope)
-        repos = []
-        for r in roots:
-            try:
-                repos.append(ramble.repository.Repo(r, obj_type))
-            except ramble.repository.RepoError:
+    total_repos = 0
+
+    if is_compact:
+        repos_data = {}
+        for obj_type in obj_types:
+            type_def = ramble.repository.type_definitions[obj_type]
+
+            roots = ramble.config.get(type_def["config_section"], scope=args.scope) or []
+            for r in roots:
+                try:
+                    repo = ramble.repository.Repo(r, obj_type)
+                except ramble.repository.RepoError:
+                    continue
+
+                key = repo.root
+                if key not in repos_data:
+                    repos_data[key] = {
+                        "namespace": repo.namespace,
+                        "root": repo.root,
+                        "types": [],
+                    }
+                if obj_type.name not in repos_data[key]["types"]:
+                    repos_data[key]["types"].append(obj_type.name)
+
+        total_repos = len(repos_data)
+
+        if repos_data:
+            if sys.stdout.isatty():
+                type_context = "" if args.type == "any" else f"{args.type} "
+                msg = f"{total_repos} {type_context}repositor"
+                msg += "y." if total_repos == 1 else "ies."
+                logger.msg(msg)
+
+            rows = []
+            for d in repos_data.values():
+                t_str = format_types(d["types"])
+                rows.append((d["namespace"], t_str, d["root"]))
+
+            rows.sort(key=lambda r: (r[0].lower(), r[2]))
+
+            header_ns = "NAMESPACE"
+            header_t = "TYPES"
+            header_p = "PATH"
+
+            max_ns = max([len(header_ns)] + [len(r[0]) for r in rows])
+            max_t = max([len(header_t)] + [len(r[1]) for r in rows])
+
+            header_line = (
+                f"{color.section_title(f'{header_ns:<{max_ns}}')}  "
+                f"{color.section_title(f'{header_t:<{max_t}}')}  "
+                f"{color.section_title(header_p)}"
+            )
+            color.cprint(header_line)
+
+            for ns, t, path in rows:
+                ns_padded = f"{ns:<{max_ns}}"
+                t_padded = f"{t:<{max_t}}"
+                row_line = f"{color.nested_1(ns_padded)}  {t_padded}  {path}"
+                color.cprint(row_line)
+    else:
+        for obj_type in obj_types:
+            type_def = ramble.repository.type_definitions[obj_type]
+
+            roots = ramble.config.get(type_def["config_section"], scope=args.scope)
+            repos = []
+            for r in roots:
+                try:
+                    repos.append(ramble.repository.Repo(r, obj_type))
+                except ramble.repository.RepoError:
+                    continue
+
+            total_repos += len(repos)
+
+            if sys.stdout.isatty() and repos:
+                msg = f"{len(repos)} {obj_type.name} repositor"
+                msg += "y." if len(repos) == 1 else "ies."
+                logger.msg(msg)
+
+            if not repos:
                 continue
 
-        total_repos += len(repos)
-
-        if sys.stdout.isatty() and repos:
-            msg = f"{len(repos)} {obj_type.name} repositor"
-            msg += "y." if len(repos) == 1 else "ies."
-            logger.msg(msg)
-
-        if not repos:
-            continue
-
-        max_ns_len = max(len(r.namespace) for r in repos)
-        for repo in repos:
-            fmt = "%%-%ds%%s" % (max_ns_len + 4)
-            print(fmt % (repo.namespace, repo.root))
+            max_ns_len = max(len(r.namespace) for r in repos)
+            for repo in repos:
+                fmt = "%%-%ds%%s" % (max_ns_len + 4)
+                print(fmt % (repo.namespace, repo.root))
 
     if total_repos == 0:
         scope_str = f" in scope '{args.scope}'" if args.scope else ""

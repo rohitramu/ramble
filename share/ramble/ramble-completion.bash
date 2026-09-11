@@ -149,7 +149,7 @@ _all_applications() {
 _repos() {
     if [[ -z "${RAMBLE_REPOS:-}" ]]
     then
-        RAMBLE_REPOS="$(ramble repo list | awk '{print $1}')"
+        RAMBLE_REPOS="$(ramble repo list --format=compact | tail -n +2 | awk '{print $1}')"
     fi
     RAMBLE_COMPREPLY="$RAMBLE_REPOS"
 }
@@ -584,7 +584,7 @@ _ramble_repo_create() {
 }
 
 _ramble_repo_list() {
-    RAMBLE_COMPREPLY="-h --help --scope -t --type"
+    RAMBLE_COMPREPLY="-h --help --scope --format -t --type"
 }
 
 _ramble_repo_add() {
