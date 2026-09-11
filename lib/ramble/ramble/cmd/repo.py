@@ -69,8 +69,8 @@ def setup_parser(subparser):
     list_parser.add_argument(
         "--format",
         choices=["full", "compact"],
-        default="full",
-        help="format to be used to print the output (default: full)",
+        default="compact",
+        help="format to be used to print the output (default: compact)",
     )
     ramble.cmd.common.arguments.add_common_arguments(list_parser, ["repo_type"])
 

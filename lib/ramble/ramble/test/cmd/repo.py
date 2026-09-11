@@ -7,9 +7,14 @@
 # except according to those terms.
 import os
 import shutil
+from types import SimpleNamespace
 
 import pytest
 
+import ramble.cmd.repo
+import ramble.config
+import ramble.repository
+from ramble.cmd.repo import format_types
 from ramble.error import RambleCommandError
 from ramble.main import RambleCommand
 from ramble.repository import BadRepoError
@@ -239,20 +244,32 @@ def test_repo_list_compact(mutable_config, tmpdir):
     assert output.count("compact_ns") == 1
 
 
-def test_repo_list_full_format_is_unchanged(mutable_config, tmpdir):
-    """The full (default) format should not print the compact table headers."""
+def test_repo_list_compact_is_the_default(mutable_config, tmpdir):
+    """Bare `repo list` uses the compact format."""
+    repo_path = str(tmpdir.join("default_repo"))
+    repo("create", repo_path, "default_ns")
+    repo("add", "--scope=site", repo_path)
+
+    implicit = repo("list", output=str)
+    explicit = repo("list", "--format=compact", output=str)
+
+    assert implicit == explicit
+    assert "NAMESPACE" in implicit
+    assert implicit.count("default_ns") == 1
+
+
+def test_repo_list_full_format_still_available(mutable_config, tmpdir):
+    """The full format keeps the original per-type listing."""
     repo_path = str(tmpdir.join("full_repo"))
     repo("create", repo_path, "full_ns")
     repo("add", "--scope=site", repo_path)
 
-    implicit = repo("list", output=str)
-    explicit = repo("list", "--format=full", output=str)
+    output = repo("list", "--format=full", output=str)
 
-    assert implicit == explicit
-    assert "NAMESPACE" not in implicit
-    assert "full_ns" in implicit
+    assert "NAMESPACE" not in output
+    assert "full_ns" in output
     # The repo is registered for every object type, so it repeats in this format
-    assert implicit.count("full_ns") > 1
+    assert output.count("full_ns") > 1
 
 
 def test_repo_list_compact_specific_type(mutable_config, tmpdir):
@@ -272,3 +289,90 @@ def test_repo_list_compact_empty(mutable_empty_config):
     output = repo("list", "--format=compact", output=str)
     assert repo.returncode == 0
     assert "No repositories found" in output
+
+
+@pytest.mark.parametrize(
+    "types_list,expected",
+    [
+        # An empty list should never reach the summarizer, but guard against it anyway
+        ([], "none"),
+        # Three or fewer types are spelled out in full
+        (["applications"], "applications"),
+        (["applications", "modifiers"], "applications, modifiers"),
+        (
+            ["applications", "modifiers", "package_managers"],
+            "applications, modifiers, package_managers",
+        ),
+        # Four or more types switch to abbreviations to keep the column narrow
+        (
+            ["applications", "modifiers", "package_managers", "workflow_managers"],
+            "app, mod, pkg_man, wm",
+        ),
+        # Once the abbreviations grow too wide, fall back to a bare count
+        (
+            [
+                "applications",
+                "modifiers",
+                "package_managers",
+                "workflow_managers",
+                "systems",
+                "platforms",
+                "base_classes",
+            ],
+            "7 types",
+        ),
+    ],
+)
+def test_format_types(types_list, expected):
+    assert format_types(types_list) == expected
+
+
+def test_format_types_all():
+    """A repo registered for every object type collapses to 'all'."""
+    all_types = [obj_type.name for obj_type in ramble.repository.ObjectTypes]
+    assert format_types(all_types) == "all"
+
+
+def test_format_types_all_non_utility():
+    """Utility types are commonly absent, so that case gets its own label."""
+    non_utility = [
+        obj_type.name for obj_type in ramble.repository.ObjectTypes if "util" not in obj_type.name
+    ]
+    assert format_types(non_utility) == "all (non-utility)"
+
+
+def test_repo_list_compact_skips_invalid_repos(mutable_config, tmpdir):
+    """A stale path in the config is skipped instead of failing the listing."""
+    valid_path = str(tmpdir.join("valid_repo"))
+    repo("create", valid_path, "valid_ns")
+    repo("add", "--scope=site", valid_path)
+
+    missing_path = str(tmpdir.join("does_not_exist"))
+    roots = ramble.config.get("repos", scope="site")
+    ramble.config.set("repos", syaml.syaml_list([missing_path] + list(roots)), scope="site")
+
+    output = repo("list", "--format=compact", output=str)
+    assert repo.returncode == 0
+    assert missing_path not in output
+    assert "valid_ns" in output
+
+
+@pytest.mark.parametrize("fmt", ["full", "compact"])
+@pytest.mark.parametrize("type_args", [[], ["-t", "applications"]])
+def test_repo_list_summary_only_on_tty(mutable_config, tmpdir, monkeypatch, type_args, fmt):
+    """The count summary is written for interactive use, but kept out of pipes."""
+    repo_path = str(tmpdir.join("tty_repo"))
+    repo("create", repo_path, "tty_ns")
+    repo("add", "--scope=site", repo_path)
+
+    piped = repo("list", *type_args, f"--format={fmt}", output=str)
+    assert "repositor" not in piped
+
+    # Only repo.py's view of sys is replaced, so output capture is left intact
+    monkeypatch.setattr(
+        ramble.cmd.repo, "sys", SimpleNamespace(stdout=SimpleNamespace(isatty=lambda: True))
+    )
+
+    on_tty = repo("list", *type_args, f"--format={fmt}", output=str)
+    assert "repositor" in on_tty
+    assert "tty_ns" in on_tty
