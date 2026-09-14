@@ -22,7 +22,9 @@ resource "google_cloudbuild_trigger" "pr_software_conflicts" {
   included_files = [
     "var/ramble/repos/**",
     "lib/ramble/ramble/**",
-    "share/ramble/cloud-build/**"
+    "examples/**",
+    "share/ramble/cloud-build/**",
+    "share/ramble/qa/check_configs.py"
   ]
 
   substitutions = {
