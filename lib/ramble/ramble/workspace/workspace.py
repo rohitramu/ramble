@@ -2441,9 +2441,14 @@ ramble:
                 )
 
             if remove_index < 0 or remove_index >= len(mod_list):
+                valid_str = (
+                    "Valid index is 0."
+                    if len(mod_list) == 1
+                    else f"Valid indices are 0-{len(mod_list) - 1}."
+                )
                 raise RambleWorkspaceError(
                     f"Modifier index {remove_index} is outside of the range of modifiers. "
-                    f"Valid indices are 0-{len(mod_list) - 1}. "
+                    f"{valid_str} "
                     "Use `ramble workspace manage modifiers --list` to see indices."
                 )
 
