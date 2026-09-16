@@ -24,13 +24,6 @@ ctest_log_parser
 * Version: Unversioned
 * Note: This is a homemade port of Kitware's CTest build handler.
 
-jinja2
-------
-
-* Homepage: https://pypi.python.org/pypi/Jinja2
-* Usage: A modern and designer-friendly templating language for Python.
-* Version: 2.10
-
 jsonschema
 ----------
 
@@ -41,13 +34,6 @@ jsonschema
   cannot be upgraded any further until we drop 2.6.
   Also, jsonschema/validators.py has been modified NOT to try to import
   requests (see 7a1dd517b8).
-
-markupsafe
-----------
-
-* Homepage: https://pypi.python.org/pypi/MarkupSafe
-* Usage: Implements a XML/HTML/XHTML Markup safe string for Python.
-* Version: 1.0
 
 ruamel.yaml
 ------
