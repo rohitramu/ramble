@@ -9,14 +9,6 @@
 """This module contains the following external, potentially separately
 licensed, packages that are included in Spack:
 
-ctest_log_parser
-----------------
-
-* Homepage: https://github.com/Kitware/CMake/blob/master/Source/CTest/cmCTestBuildHandler.cxx
-* Usage: Functions to parse build logs and extract error messages.
-* Version: Unversioned
-* Note: This is a homemade port of Kitware's CTest build handler.
-
 jsonschema
 ----------
 
