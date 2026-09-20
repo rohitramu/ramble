@@ -694,10 +694,10 @@ def workspace_analyze(args):
 
 def workspace_push_to_cache(args):
     current_pipeline = ramble.pipeline.pipelines.pushtocache
-    ws = ramble.cmd.require_active_workspace("workspace pushtocache", args.dry_run)
+    ws = ramble.cmd.require_active_workspace("workspace push-to-cache", args.dry_run)
 
     filters = ramble.filters.Filters(
-        phase_filters="*",
+        phase_filters=ramble.filters.ALL_PHASES,
         include_where_filters=args.where,
         exclude_where_filters=args.exclude_where,
         tags=args.filter_tags,
@@ -1455,7 +1455,7 @@ def workspace_mirror_setup_parser(subparser):
 
 def workspace_mirror(args):
     current_pipeline = ramble.pipeline.pipelines.mirror
-    ws = ramble.cmd.require_active_workspace("workspace archive", args.dry_run)
+    ws = ramble.cmd.require_active_workspace("workspace mirror", args.dry_run)
 
     filters = ramble.filters.Filters(
         phase_filters=args.phases,
@@ -1467,7 +1467,6 @@ def workspace_mirror(args):
     pipeline = pipeline_cls(ws, filters, mirror_path=args.mirror_path)
 
     workspace_run_pipeline(args, pipeline)
-    pipeline.run()
 
 
 def workspace_manage_experiments_setup_parser(subparser):

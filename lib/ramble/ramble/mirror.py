@@ -362,25 +362,7 @@ class MirrorStats:
     def __init__(self):
         self.present = {}
         self.new = {}
-        self.errors = {}
-
-        self.current_spec = None
-        self.added_resources = set()
-        self.existing_resources = set()
-
-    def _tally_current_spec(self):
-        if self.current_spec:
-            if self.added_resources:
-                self.new[self.current_spec] = len(self.added_resources)
-            if self.existing_resources:
-                self.present[self.current_spec] = len(self.existing_resources)
-            self.added_resources = set()
-            self.existing_resources = set()
-        self.current_spec = None
-
-    def stats(self):
-        self._tally_current_spec()
-        return list(self.present), list(self.new), list(self.errors)
+        self.errors = set()
 
     def already_existed(self, resource):
         self.present[resource] = True
@@ -389,7 +371,7 @@ class MirrorStats:
         self.new[resource] = True
 
     def error(self, resource):
-        self.errors.add(self.current_spec)
+        self.errors.add(resource)
 
 
 class MirrorError(ramble.error.RambleError):
