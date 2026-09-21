@@ -211,3 +211,15 @@ def test_push_dir_to_url_unsupported_scheme(tmpdir):
 
     with pytest.raises(NotImplementedError, match="Unrecognized URL scheme: http"):
         web.push_dir_to_url(str(local_dir), "http://example.com/remote_dir")
+
+
+def test_read_from_url_and_url_exists_web_error(monkeypatch):
+    def _mock_urlopen(*args, **kwargs):
+        raise web.URLError("mock connection error")
+
+    monkeypatch.setattr(web, "_urlopen", _mock_urlopen)
+
+    with pytest.raises(web.RambleWebError, match="Download failed"):
+        web.read_from_url("http://example.com/nonexistent")
+
+    assert not web.url_exists("http://example.com/nonexistent")
