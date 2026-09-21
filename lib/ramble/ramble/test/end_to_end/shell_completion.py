@@ -60,15 +60,17 @@ _EMPTY_COMPLETION_CASES = [
 ]
 
 
-@pytest.fixture(autouse=True)
-def require_bash():
-    """Ensure bash is available on the system."""
-    if not shutil.which("bash"):
-        pytest.skip("bash not found")
+@pytest.fixture(params=["bash", "zsh"])
+def supported_shell(request):
+    """Ensure shell is available on the system."""
+    shell = request.param
+    if not shutil.which(shell):
+        pytest.skip(f"{shell} not found")
+    return shell
 
 
 def _completion_script(invocations):
-    """Build a bash script that sources ramble and echoes each completion result."""
+    """Build a shell script that sources ramble and echoes each completion result."""
     setup_env = os.path.join(paths.share_path, "setup-env.sh")
 
     lines = [f'source "{setup_env}"']
@@ -78,14 +80,14 @@ def _completion_script(invocations):
     return "\n".join(lines) + "\n"
 
 
-def _run_completions(tmpdir, invocations):
-    """Run invocations under bash, returning {index: completion output}."""
-    script_path = str(tmpdir.join("test_completion.bash"))
+def _run_completions(tmpdir, invocations, shell="bash"):
+    """Run invocations under shell, returning {index: completion output}."""
+    script_path = str(tmpdir.join(f"test_completion.{shell}"))
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(_completion_script(invocations))
 
     process = subprocess.run(
-        ["bash", script_path],
+        [shell, script_path],
         capture_output=True,
         text=True,
         cwd=str(tmpdir),
@@ -95,7 +97,7 @@ def _run_completions(tmpdir, invocations):
     )
 
     assert process.returncode == 0, (
-        f"bash exited with {process.returncode}\n"
+        f"{shell} exited with {process.returncode}\n"
         f"stdout:\n{process.stdout}\nstderr:\n{process.stderr}"
     )
 
@@ -113,29 +115,30 @@ def _run_completions(tmpdir, invocations):
     return results
 
 
-def test_completion_suggestions(tmpdir):
-    """Bash completions contain the expected suggestions."""
+def test_completion_suggestions(tmpdir, supported_shell):
+    """Shell completions contain the expected suggestions."""
     invocations = [case[0] for case in _COMPLETION_CASES]
-    results = _run_completions(tmpdir, invocations)
+    results = _run_completions(tmpdir, invocations, shell=supported_shell)
 
     for index, (invocation, expected) in enumerate(_COMPLETION_CASES):
         assert expected in results[index], (
-            f"`{invocation}` should complete to something containing "
+            f"`{invocation}` under {supported_shell} should complete to something containing "
             f"'{expected}', but got '{results[index]}'"
         )
 
 
-def test_completion_of_unknown_command_is_empty(tmpdir):
+def test_completion_of_unknown_command_is_empty(tmpdir, supported_shell):
     """Unknown commands produce no completions instead of erroring."""
-    results = _run_completions(tmpdir, _EMPTY_COMPLETION_CASES)
+    results = _run_completions(tmpdir, _EMPTY_COMPLETION_CASES, shell=supported_shell)
 
     for index, invocation in enumerate(_EMPTY_COMPLETION_CASES):
-        assert not results[
-            index
-        ], f"`{invocation}` should produce no completions, but got '{results[index]}'"
+        assert not results[index], (
+            f"`{invocation}` under {supported_shell} should produce no completions, "
+            f"but got '{results[index]}'"
+        )
 
 
-def test_every_subcommand_completes_help_flag(tmpdir):
+def test_every_subcommand_completes_help_flag(tmpdir, supported_shell):
     """Every subcommand has a completion function that offers --help.
 
     This catches completion functions that were renamed or never generated,
@@ -151,18 +154,19 @@ def test_every_subcommand_completes_help_flag(tmpdir):
     # Completing a word that starts with a dash lists flags, which avoids
     # invoking ramble to compute positional completions for every subcommand.
     invocations = [f"{s.strip()} -" for s in subcommands if s.strip()]
-    results = _run_completions(tmpdir, invocations)
+    results = _run_completions(tmpdir, invocations, shell=supported_shell)
 
     for index, invocation in enumerate(invocations):
-        assert (
-            "--help" in results[index]
-        ), f"`{invocation}` should offer --help, but got '{results[index]}'"
+        assert "--help" in results[index], (
+            f"`{invocation}` under {supported_shell} should offer --help, "
+            f"but got '{results[index]}'"
+        )
 
 
-def test_completion_cursor_in_middle_of_line(tmpdir):
-    """Test bash completion when cursor is in the middle of a command line."""
+def test_completion_cursor_in_middle_of_line(tmpdir, supported_shell):
+    """Test completion when cursor is in the middle of a command line."""
     setup_env = os.path.join(paths.share_path, "setup-env.sh")
-    script_path = str(tmpdir.join("test_midline.bash"))
+    script_path = str(tmpdir.join(f"test_midline.{supported_shell}"))
     with open(script_path, "w", encoding="utf-8") as f:
         f.write(f"""source "{setup_env}"
 COMP_LINE='ramble -d  list '
@@ -176,7 +180,7 @@ echo "{_CASE_MARKER}:${{COMPREPLY[*]}}"
 """)
 
     process = subprocess.run(
-        ["bash", script_path],
+        [supported_shell, script_path],
         capture_output=True,
         text=True,
         cwd=str(tmpdir),
@@ -191,3 +195,34 @@ echo "{_CASE_MARKER}:${{COMPREPLY[*]}}"
             break
     assert "--help" in output
     assert "--all-help" in output
+
+
+def test_workspace_activate_completion(tmpdir, supported_shell):
+    """Test completion of workspace names for workspace activate."""
+    setup_env = os.path.join(paths.share_path, "setup-env.sh")
+    script_path = str(tmpdir.join(f"test_ws_completion.{supported_shell}"))
+    ws_name = "test_ws_autocomp"
+    with open(script_path, "w", encoding="utf-8") as f:
+        f.write(f"""source "{setup_env}"
+ramble workspace create {ws_name} > /dev/null 2>&1
+echo "{_CASE_MARKER}:$(_ramble_completions ramble workspace activate '')"
+ramble workspace remove -y {ws_name} > /dev/null 2>&1
+""")
+
+    process = subprocess.run(
+        [supported_shell, script_path],
+        capture_output=True,
+        text=True,
+        cwd=str(tmpdir),
+        env=os.environ.copy(),
+        check=False,
+    )
+    assert process.returncode == 0, f"{supported_shell} failed with {process.stderr}"
+    output = ""
+    for line in process.stdout.splitlines():
+        if line.startswith(f"{_CASE_MARKER}:"):
+            output = line.partition(":")[2]
+            break
+    words = output.split()
+    assert ws_name in words
+    assert "Workspaces" not in words

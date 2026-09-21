@@ -157,9 +157,7 @@ _bash_completion_ramble() {
     #_test_vars >> temp
 
     # Make sure function exists before calling it
-    local rgx #this dance is necessary to cover bash and zsh regex
-    rgx="$subfunction.*function.* "
-    if [[ "$(LC_ALL=C type $subfunction 2>&1)" =~ $rgx ]]
+    if declare -f "$subfunction" > /dev/null 2>&1
     then
         $subfunction
         COMPREPLY=($(_compgen_w "$RAMBLE_COMPREPLY" "$cur"))
@@ -196,7 +194,7 @@ _repos() {
 _workspaces() {
     if [[ -z "${RAMBLE_WORKSPACES:-}" ]]
     then
-        RAMBLE_WORKSPACES="$(ramble workspace list)"
+        RAMBLE_WORKSPACES="$(ramble --color=never workspace list --merged 2>/dev/null)"
     fi
     RAMBLE_COMPREPLY="$RAMBLE_WORKSPACES"
 }

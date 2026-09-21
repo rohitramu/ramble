@@ -364,7 +364,9 @@ if test "$_rmb_shell" = bash || test -n "${ZSH_VERSION:-}"; then
     # The custom version includes support for command aliases, it is
     # generated via `ramble commands --update-completion`.
     if [ -f "$_rmb_share_dir/custom-ramble-completion.bash" ]; then
-        source $_rmb_share_dir/custom-ramble-completion.bash
+        if [ ! "$_rmb_share_dir/ramble-completion.bash" -nt "$_rmb_share_dir/custom-ramble-completion.bash" ]; then
+            source $_rmb_share_dir/custom-ramble-completion.bash
+        fi
     fi
 fi
 
