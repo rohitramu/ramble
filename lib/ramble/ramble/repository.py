@@ -23,6 +23,7 @@ import sys
 import traceback
 import types
 from enum import Enum
+from typing import Any, Dict
 
 from ruamel import yaml
 
@@ -78,11 +79,12 @@ default_type = ObjectTypes.applications
 
 unified_config = "repo.yaml"
 
-type_definitions = {
+type_definitions: Dict[ObjectTypes, Dict[str, Any]] = {
     ObjectTypes.applications: {
         "file_name": "application.py",
         "dir_name": "applications",
         "abbrev": "app",
+        "kit_name": "appkit",
         "config_section": "repos",
         "accepted_configs": ["application_repo.yaml", unified_config],
         "singular": "application",
@@ -91,6 +93,7 @@ type_definitions = {
         "file_name": "modifier.py",
         "dir_name": "modifiers",
         "abbrev": "mod",
+        "kit_name": "modkit",
         "config_section": "modifier_repos",
         "accepted_configs": ["modifier_repo.yaml", unified_config],
         "singular": "modifier",
@@ -99,6 +102,7 @@ type_definitions = {
         "file_name": "package_manager.py",
         "dir_name": "package_managers",
         "abbrev": "pkg_man",
+        "kit_name": "pkgmankit",
         "config_section": "package_manager_repos",
         "accepted_configs": ["package_manager_repo.yaml", unified_config],
         "singular": "package manager",
@@ -108,6 +112,7 @@ type_definitions = {
         "file_name": "workflow_manager.py",
         "dir_name": "workflow_managers",
         "abbrev": "wm",
+        "kit_name": "wmkit",
         "config_section": "workflow_manager_repos",
         "accepted_configs": ["workflow_manager_repo.yaml", unified_config],
         "singular": "workflow manager",
@@ -117,6 +122,7 @@ type_definitions = {
         "file_name": "system.py",
         "dir_name": "systems",
         "abbrev": "sys",
+        "kit_name": "syskit",
         "config_section": "system_repos",
         "accepted_configs": ["system_repo.yaml", unified_config],
         "singular": "system",
@@ -125,6 +131,7 @@ type_definitions = {
         "file_name": "platform.py",
         "dir_name": "platforms",
         "abbrev": "plat",
+        "kit_name": "platkit",
         "config_section": "platform_repos",
         "accepted_configs": ["platform_repo.yaml", unified_config],
         "singular": "platform",
@@ -133,6 +140,7 @@ type_definitions = {
         "file_name": "base_class.py",
         "dir_name": "base_classes",
         "abbrev": "base_cls",
+        "kit_name": None,
         "config_section": "base_class_repos",
         "accepted_configs": ["base_class_repo.yaml", unified_config],
         "singular": "base class",
@@ -142,6 +150,7 @@ type_definitions = {
         "file_name": "base_application.py",
         "dir_name": "base_applications",
         "abbrev": "base_app",
+        "kit_name": "appkit",
         "config_section": "base_application_repos",
         "accepted_configs": ["base_application_repo.yaml", unified_config],
         "singular": "base application",
@@ -150,6 +159,7 @@ type_definitions = {
         "file_name": "base_modifier.py",
         "dir_name": "base_modifiers",
         "abbrev": "base_mod",
+        "kit_name": "modkit",
         "config_section": "base_modifier_repos",
         "accepted_configs": ["base_modifier_repo.yaml", unified_config],
         "singular": "base modifier",
@@ -158,6 +168,7 @@ type_definitions = {
         "file_name": "base_package_manager.py",
         "dir_name": "base_package_managers",
         "abbrev": "base_pkg_man",
+        "kit_name": "pkgmankit",
         "config_section": "base_package_manager_repos",
         "accepted_configs": ["base_package_manager_repo.yaml", unified_config],
         "singular": "base package manager",
@@ -167,6 +178,7 @@ type_definitions = {
         "file_name": "base_workflow_manager.py",
         "dir_name": "base_workflow_managers",
         "abbrev": "base_wm",
+        "kit_name": "wmkit",
         "config_section": "base_workflow_manager_repos",
         "accepted_configs": ["base_workflow_manager_repo.yaml", unified_config],
         "singular": "base workflow manager",
@@ -176,6 +188,7 @@ type_definitions = {
         "file_name": "base_system.py",
         "dir_name": "base_systems",
         "abbrev": "base_sys",
+        "kit_name": "syskit",
         "config_section": "base_system_repos",
         "accepted_configs": ["base_system_repo.yaml", unified_config],
         "singular": "base system",
@@ -184,6 +197,7 @@ type_definitions = {
         "file_name": "base_platform.py",
         "dir_name": "base_platforms",
         "abbrev": "base_plat",
+        "kit_name": "platkit",
         "config_section": "base_platform_repos",
         "accepted_configs": ["base_platform_repo.yaml", unified_config],
         "singular": "base platform",
@@ -192,6 +206,7 @@ type_definitions = {
         "file_name": "utility.py",
         "dir_name": "utilities",
         "abbrev": "utility",
+        "kit_name": "toolkit",
         "config_section": "utility_repos",
         "accepted_configs": ["utility_repo.yaml", unified_config],
         "singular": "external dependency",
@@ -200,6 +215,7 @@ type_definitions = {
         "file_name": "base_utility.py",
         "dir_name": "base_utilities",
         "abbrev": "base_utility",
+        "kit_name": "toolkit",
         "config_section": "base_utility_repos",
         "accepted_configs": ["base_utility_repo.yaml", unified_config],
         "singular": "base external dependency",
