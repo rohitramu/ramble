@@ -90,59 +90,31 @@ base_class_file = repository.type_definitions[repository.ObjectTypes.base_classe
 # For each file, if the filename pattern matches, we'll add per-line
 # exemptions if any patterns in the sub-dict match.
 _raw_pattern_exemptions = {
-    # exemptions applied only to application.py files.
-    rf"application.py|{base_class_file}$": {
-        # Allow 'from ramble.appkit import *' in applications,
+    rf"\b{type_def['file_name']}$": {
+        # Allow 'from ramble.<kit_name> import *' in object definitions,
         # but no other wildcards
-        "F403": [r"^from ramble.appkit import \*$"],
+        "F403": [rf"^from ramble.{type_def['kit_name']} import \*$"],
         **common_object_exemptions,
-    },
-    # exemptions applied only to modifier.py files.
-    rf"modifier.py|{base_class_file}$": {
-        # Allow 'from ramble.modkit import *' in modifiers,
-        # but no other wildcards
-        "F403": [r"^from ramble.modkit import \*$"],
-        **common_object_exemptions,
-    },
-    # exemptions applied only to package_manager.py files.
-    rf"package_manager.py|{base_class_file}$": {
-        # Allow 'from ramble.pkgmankit import *' in package_managers,
-        # but no other wildcards
-        "F403": [r"^from ramble.pkgmankit import \*$"],
-        **common_object_exemptions,
-    },
-    # exemptions applied only to workflow_manager.py files.
-    rf"workflow_manager.py|{base_class_file}$": {
-        # Allow 'from ramble.wmkit import *' in workflow_managers,
-        # but no other wildcards
-        "F403": [r"^from ramble.wmkit import \*$"],
-        **common_object_exemptions,
-    },
-    rf"platform.py|{base_class_file}$": {
-        # Allow 'from ramble.platkit import *' in platforms,
-        # but no other wildcards
-        "F403": [r"^from ramble.platkit import \*$"],
-        **common_object_exemptions,
-    },
-    rf"system.py|{base_class_file}$": {
-        # Allow 'from ramble.syskit import *' in systems,
-        # but no other wildcards
-        "F403": [r"^from ramble.syskit import \*$"],
-        **common_object_exemptions,
-    },
-    rf"utility.py|{base_class_file}$": {
-        # Allow 'from ramble.toolkit import *' in utilities,
-        # but no other wildcards
-        "F403": [r"^from ramble.toolkit import \*$"],
-        **common_object_exemptions,
-    },
-    # exemptions applied to all files.
-    r"\.py$": {
-        "E501": [
-            r"(https?|ftp|file)\:",  # URLs
-            r'([\'"])[0-9a-fA-F]{32,}\1',  # long hex checksums
-        ]
-    },
+    }
+    for type_def in repository.type_definitions.values()
+    if type_def["kit_name"] is not None
+}
+_raw_pattern_exemptions[rf"\b{base_class_file}$"] = {
+    "F403": sorted(
+        {
+            rf"^from ramble.{type_def['kit_name']} import \*$"
+            for type_def in repository.type_definitions.values()
+            if type_def["kit_name"] is not None
+        }
+    ),
+    **common_object_exemptions,
+}
+# exemptions applied to all files.
+_raw_pattern_exemptions[r"\.py$"] = {
+    "E501": [
+        r"(https?|ftp|file)\:",  # URLs
+        r'([\'"])[0-9a-fA-F]{32,}\1',  # long hex checksums
+    ]
 }
 
 # compile all regular expressions.
