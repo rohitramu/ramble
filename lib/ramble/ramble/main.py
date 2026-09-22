@@ -37,6 +37,7 @@ import ramble.config
 import ramble.paths
 import ramble.repository
 import ramble.util.colors as color
+import ramble.util.lock
 import ramble.util.version
 import ramble.workspace
 import ramble.workspace.shell
@@ -606,7 +607,7 @@ def setup_main_options(args):
     # override lock configuration if passed on command line
     if args.locks is not None:
         if args.locks is False:
-            spack.util.lock.check_lock_safety(ramble.paths.prefix)
+            ramble.util.lock.check_lock_safety(ramble.paths.prefix)
         ramble.config.set("config:locks", args.locks, scope="command_line")
 
     # override disable_passthrough configuration if passed on command line
