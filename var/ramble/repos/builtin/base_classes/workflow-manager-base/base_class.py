@@ -29,7 +29,6 @@ class WorkflowManagerBase(ObjectMixin, metaclass=DirectiveMeta):
         ("workflow_manager_builtin", "{obj_name}", "{name}")
     )
     _language_types = ["workflow_manager", "shared"]
-    _language_classes = _language_types
     pipelines = [
         "analyze",
         "setup",

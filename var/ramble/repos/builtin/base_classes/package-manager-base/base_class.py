@@ -32,7 +32,6 @@ class PackageManagerBase(ObjectMixin, metaclass=DirectiveMeta):
         ("package_manager_builtin", "{obj_name}", "{name}")
     )
     _language_types = ["package_manager", "shared"]
-    _language_classes = _language_types
     pipelines = [
         "analyze",
         "archive",

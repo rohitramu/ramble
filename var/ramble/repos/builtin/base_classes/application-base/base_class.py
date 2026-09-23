@@ -170,7 +170,6 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
         "logs",
     ]
     _language_types = ["application", "shared"]
-    _language_classes = _language_types
 
     variant(
         "inject_modifiers_from_directives",

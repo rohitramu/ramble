@@ -37,7 +37,6 @@ class ModifierBase(ObjectMixin, metaclass=DirectiveMeta):
     )
     _mod_prefix_builtin = f"modifier_builtin{NS_SEPARATOR}"
     _language_types = ["modifier", "shared"]
-    _language_classes = _language_types
     pipelines = [
         "analyze",
         "archive",

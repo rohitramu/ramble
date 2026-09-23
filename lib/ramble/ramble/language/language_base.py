@@ -45,10 +45,6 @@ def _impossible_when_warning(directive_name, obj_type, obj_name, message, args, 
     logger.warn("\n".join(parts))
 
 
-#: These are variant names used by ramble internally; applications can't use
-#: them
-reserved_names: List[str] = []
-
 _UNSET = object()
 
 
@@ -136,9 +132,8 @@ class DirectiveMeta(abc.ABCMeta):
     _directive_init_values: Dict[str, Any] = {}
     # List of directives to be executed for the class being defined, preserving definition order
     _directives_to_be_executed: List[Tuple[str, Any]] = []
-    # Directive functions and classes
+    # Directive functions and language types
     _directive_functions: Dict[str, Callable[..., Any]] = {}
-    _directive_classes: Dict[str, type] = {}
     _directive_types: Dict[str, str] = {}
     # Workload-related dictionaries referenced by environment_variable in shared_language
     # that belong exclusively to applications
@@ -191,13 +186,9 @@ class DirectiveMeta(abc.ABCMeta):
         cls: Type["DirectiveMeta"], name: str, bases: tuple, attr_dict: dict
     ) -> "DirectiveMeta":
         # Determine language types to scope descriptors
-        lang_types = set(attr_dict.get("_language_types", [])) | set(
-            attr_dict.get("_language_classes", [])
-        )
+        lang_types = set(attr_dict.get("_language_types", []))
         for base in bases:
-            lang_types |= set(getattr(base, "_language_types", [])) | set(
-                getattr(base, "_language_classes", [])
-            )
+            lang_types |= set(getattr(base, "_language_types", []))
 
         if lang_types:
             relevant_dicts = set()
@@ -243,7 +234,6 @@ class DirectiveMeta(abc.ABCMeta):
 
         attr_dict["_directives_to_be_executed"] = merged
         attr_dict["_directive_functions"] = dict(DirectiveMeta._directive_functions)
-        attr_dict["_directive_classes"] = dict(DirectiveMeta._directive_classes)
         attr_dict["_directive_types"] = dict(DirectiveMeta._directive_types)
         attr_dict["_directive_dict_names"] = relevant_dicts
 
@@ -384,7 +374,6 @@ class DirectiveMeta(abc.ABCMeta):
         def _decorator(decorated_function: Callable[..., Any]) -> Callable[..., Any]:
             func_name = decorated_function.__name__
             DirectiveMeta.register_directive(func_name, dicts_tuple)
-            DirectiveMeta._directive_classes[func_name] = cls
             DirectiveMeta._directive_types[func_name] = language_type
             DirectiveMeta._directive_functions[func_name] = decorated_function
 
