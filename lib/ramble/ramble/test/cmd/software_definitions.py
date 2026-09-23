@@ -97,7 +97,16 @@ def test_software_definitions_error_on_conflicts_single(monkeypatch):
     assert "1 conflict detected." in out
 
 
-def test_software_definitions_skips_broken_objects(monkeypatch):
+@pytest.mark.parametrize(
+    "raised_error",
+    [
+        ramble.error.RambleError("Simulated error loading"),
+        NameError("name 'DisabledModifier' is not defined"),
+        SyntaxError("invalid syntax"),
+        ImportError("No module named 'nonexistent'"),
+    ],
+)
+def test_software_definitions_skips_broken_objects(monkeypatch, raised_error):
     app_path = ramble.repository.paths[ramble.repository.ObjectTypes.applications]
     app_names = app_path.all_object_names()
     assert len(app_names) > 0
@@ -107,7 +116,7 @@ def test_software_definitions_skips_broken_objects(monkeypatch):
 
     def mock_get(name):
         if name == first_app:
-            raise ramble.error.RambleError(f"Simulated error loading {name}")
+            raise raised_error
         return real_get(name)
 
     monkeypatch.setattr(app_path, "get", mock_get)

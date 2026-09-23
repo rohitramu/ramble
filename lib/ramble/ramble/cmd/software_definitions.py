@@ -54,7 +54,15 @@ def collect_definitions():
         for obj_name in obj_path.all_object_names():
             try:
                 obj_inst = obj_path.get(obj_name)
-            except ramble.error.RambleError:
+            except (
+                ramble.error.RambleError,
+                NameError,
+                SyntaxError,
+                ImportError,
+                AttributeError,
+                TypeError,
+            ) as e:
+                logger.warn(f"Could not load software definitions for '{obj_name}': {e}")
                 continue
             obj_repo = obj_path.repo_for_obj(obj_inst.name)
 
