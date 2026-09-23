@@ -18,7 +18,7 @@ import shutil
 import stat
 import time
 from html import escape
-from typing import Dict, List
+from typing import Dict
 
 import llnl.util.filesystem as fs
 from llnl.util.tty import color
@@ -177,8 +177,6 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
         default=True,
         description="Whether to include automatically injected modifiers",
     )
-
-    license_names: List[str] = []
 
     archive_pattern("{experiment_run_dir}/" + ExperimentResult.cache_file_name)
 

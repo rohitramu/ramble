@@ -37,8 +37,8 @@ def test_create_help():
             [
                 "class MyTestApp(ExecutableApplication):",
                 'name = "my-test-app"',
-                "maintainers = ['alice', 'bob']",
-                "tags = ['bio', 'gpu']",
+                "maintainers('alice', 'bob')",
+                "tags('bio', 'gpu')",
             ],
             None,
         ),
@@ -287,8 +287,8 @@ def test_create_interactive_wizard(mutable_config, tmpdir, monkeypatch):
     with open(app_file, encoding="utf-8") as f:
         content = f.read()
         assert "class MyWizardApp(ExecutableApplication):" in content
-        assert "maintainers = ['charlie']" in content
-        assert "tags = ['science']" in content
+        assert "maintainers('charlie')" in content
+        assert "tags('science')" in content
 
 
 def test_create_interactive_wizard_validation_and_abort(mutable_config, tmpdir, monkeypatch):
