@@ -79,6 +79,11 @@ def test_mirror_str_and_repr():
     )
 
 
+def test_mirror_from_yaml_error():
+    with pytest.raises(ramble.mirror.MirrorError, match="error parsing YAML mirror"):
+        ramble.mirror.Mirror.from_yaml("invalid: yaml: : [")
+
+
 # Create an archive for the test input, with the correct file name
 def create_archive(archive_dir, app_cls):
     tar = spack.util.executable.which("tar", required=True)

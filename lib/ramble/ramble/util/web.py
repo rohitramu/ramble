@@ -28,6 +28,7 @@ from ramble.util.logger import logger
 import spack.util.gcs as gcs_util
 import spack.util.s3 as s3_util
 import spack.util.url as url_util
+from spack.error import SpackError
 from spack.util.path import convert_to_posix_path
 
 #: User-Agent used in Request objects
@@ -79,23 +80,22 @@ def read_from_url(url, accept_content_type=None):
 
     content_type = None
     is_web_url = url_scheme in ("http", "https")
-    if accept_content_type and is_web_url:
-        # Make a HEAD request first to check the content type.  This lets
-        # us ignore tarballs and gigantic files.
-        # It would be nice to do this with the HTTP Accept header to avoid
-        # one round-trip.  However, most servers seem to ignore the header
-        # if you ask for a tarball with Accept: text/html.
-        req.method = "HEAD"
-        resp = _urlopen(req, timeout=timeout, context=context)
-
-        content_type = get_header(resp.headers, "Content-type")
-
-    # Do the real GET request when we know it's just HTML.
-    req.method = "GET"
-
     try:
+        if accept_content_type and is_web_url:
+            # Make a HEAD request first to check the content type.  This lets
+            # us ignore tarballs and gigantic files.
+            # It would be nice to do this with the HTTP Accept header to avoid
+            # one round-trip.  However, most servers seem to ignore the header
+            # if you ask for a tarball with Accept: text/html.
+            req.method = "HEAD"
+            resp = _urlopen(req, timeout=timeout, context=context)
+
+            content_type = get_header(resp.headers, "Content-type")
+
+        # Do the real GET request when we know it's just HTML.
+        req.method = "GET"
         response = _urlopen(req, timeout=timeout, context=context)
-    except URLError as err:
+    except (URLError, SpackError) as err:
         raise RambleWebError("Download failed") from err
 
     if accept_content_type and not is_web_url:

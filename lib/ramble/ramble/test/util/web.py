@@ -222,4 +222,25 @@ def test_read_from_url_and_url_exists_web_error(monkeypatch):
     with pytest.raises(web.RambleWebError, match="Download failed"):
         web.read_from_url("http://example.com/nonexistent")
 
+    with pytest.raises(web.RambleWebError, match="Download failed"):
+        web.read_from_url("http://example.com/nonexistent", accept_content_type="text/html")
+
     assert not web.url_exists("http://example.com/nonexistent")
+
+
+def test_gcs_open_missing_blob_raises_ramble_web_error(monkeypatch):
+    import spack.util.gcs
+
+    class DummyGCSBlob:
+        def __init__(self, url):
+            self.blob_path = "missing/blob.tar.gz"
+
+        def exists(self):
+            return False
+
+    monkeypatch.setattr(spack.util.gcs, "GCSBlob", DummyGCSBlob)
+
+    with pytest.raises(web.RambleWebError, match="Download failed"):
+        web.read_from_url("gs://my-bucket/missing/blob.tar.gz")
+
+    assert not web.url_exists("gs://my-bucket/missing/blob.tar.gz")

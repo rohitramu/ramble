@@ -35,12 +35,12 @@ import ramble.workspace.shell
 from ramble import ramble_version
 from ramble.cmd.common import arguments
 from ramble.namespace import namespace
+from ramble.util.editor import editor
 from ramble.util.format import when_order
 from ramble.util.logger import logger
 
 import spack.util.environment
 from spack.util import string
-from spack.util.editor import editor
 
 description = "manage experiment workspaces"
 section = "workspaces"
@@ -1334,7 +1334,7 @@ def workspace_edit(args, unknown_args):
                 logger.debug(f"Passing {unknown_args} to editor...")
             edit_files += unknown_args or []
             editor(*edit_files)
-        except TypeError:
+        except (TypeError, OSError):
             logger.die("No valid editor was found.")
 
 
