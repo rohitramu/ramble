@@ -18,6 +18,7 @@ from ramble.language.shared_language import variant
 from ramble.language.workflow_manager_language import (
     workflow_manager_variable,
 )
+from ramble.pipeline import pipelines as pipeline_enum
 from ramble.util.naming import NS_SEPARATOR
 from ramble.workspace import namespace
 
@@ -32,9 +33,9 @@ class WorkflowManagerBase(ObjectMixin, metaclass=DirectiveMeta):
     _language_types = ["workflow_manager", "shared"]
     _language_classes = _language_types
     pipelines = [
-        "analyze",
-        "setup",
-        "execute",
+        pipeline_enum.analyze,
+        pipeline_enum.setup,
+        pipeline_enum.execute,
     ]
 
     variant(

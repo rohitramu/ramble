@@ -10,6 +10,7 @@ import os
 
 import ramble.repository
 from ramble.language.language_base import DirectiveMeta
+from ramble.pipeline import pipelines as pipeline_enum
 from ramble.util.logger import logger
 from ramble.util.naming import NS_SEPARATOR
 
@@ -24,7 +25,7 @@ class UtilityBase(ObjectMixin, metaclass=DirectiveMeta):
     _language_types = ["utility", "shared"]
     _language_classes = _language_types
     pipelines = [
-        "setup",
+        pipeline_enum.setup,
     ]
 
     utility_class = "UtilityBase"

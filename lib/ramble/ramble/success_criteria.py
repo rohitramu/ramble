@@ -9,7 +9,7 @@
 import fnmatch
 import re
 
-from ramble.util.foms import get_literal_from_regex
+from ramble.util.foms import NULL_CONTEXT, get_literal_from_regex
 from ramble.util.logger import logger
 
 
@@ -116,7 +116,7 @@ class SuccessCriteria:
         match=None,
         file="{log_file}",
         fom_name=None,
-        fom_context="null",
+        fom_context=NULL_CONTEXT,
         formula=None,
         anti_match=None,
         owning_object=None,
