@@ -28,7 +28,6 @@ class SystemBase(ObjectMixin, metaclass=DirectiveMeta):
         ("system_builtin", "{obj_name}", "{name}")
     )
     _language_types = ["system", "shared"]
-    _language_classes = _language_types
 
     variant(
         "validate_system",

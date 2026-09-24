@@ -31,7 +31,6 @@ def isolate_directive_registry():
     saved_to_dicts = dict(DirectiveMeta._directive_to_dicts)
     saved_dict_to_dirs = {k: list(v) for k, v in DirectiveMeta._dict_to_directives.items()}
     saved_functions = dict(DirectiveMeta._directive_functions)
-    saved_classes = dict(DirectiveMeta._directive_classes)
     saved_types = dict(DirectiveMeta._directive_types)
     saved_type_scoped = {k: set(v) for k, v in DirectiveMeta._type_scoped_dicts.items()}
     saved_shared = set(DirectiveMeta._shared_dict_names)
@@ -50,8 +49,6 @@ def isolate_directive_registry():
         DirectiveMeta._dict_to_directives[k] = v
     DirectiveMeta._directive_functions.clear()
     DirectiveMeta._directive_functions.update(saved_functions)
-    DirectiveMeta._directive_classes.clear()
-    DirectiveMeta._directive_classes.update(saved_classes)
     DirectiveMeta._directive_types.clear()
     DirectiveMeta._directive_types.update(saved_types)
     DirectiveMeta._type_scoped_dicts.clear()
@@ -226,7 +223,6 @@ def test_dynamic_instance_directive_execution():
         name = "dynamic_app"
         __module__ = "ramble.app"
         _language_types = ["application", "shared"]
-        _language_classes = _language_types
 
         ramble.language.application_language.workload("static_wl", executables=["static_exe"])
 
@@ -313,19 +309,6 @@ def test_subclass_preferred_version_override():
             ramble.language.shared_language.version("2.0", preferred=True)
 
         _ = ConflictVerApp.preferred_version
-
-
-def test_class_level_attribute_preservation():
-    """Verify that class-level attributes matching directive names are preserved."""
-
-    class ClassAttrApp(metaclass=ramble.language.application_language.ApplicationMeta):
-        name = "class_attr_app"
-        __module__ = "ramble.app"
-        maintainers = ["alice", "bob"]
-        tags = ["tag_custom"]
-
-    assert ClassAttrApp.maintainers == ["alice", "bob"]
-    assert ClassAttrApp.tags == ["tag_custom"]
 
 
 def test_instance_preferred_version_preservation_on_clone(mutable_mock_apps_repo):

@@ -45,10 +45,6 @@ def _impossible_when_warning(directive_name, obj_type, obj_name, message, args, 
     logger.warn("\n".join(parts))
 
 
-#: These are variant names used by ramble internally; applications can't use
-#: them
-reserved_names: List[str] = []
-
 _UNSET = object()
 
 
@@ -79,14 +75,10 @@ class DirectiveDictDescriptor:
             return val
 
         dicts_to_init, directives_to_run = DirectiveMeta.get_cached_execution_plan(self.name)
-        class_values = getattr(cls, "_class_directive_values", {})
         initialized_dicts = []
         for dictionary in dicts_to_init:
             if cls.__dict__.get(f"_{dictionary}", _UNSET) is _UNSET:
-                if dictionary in class_values:
-                    init_val = class_values[dictionary]
-                else:
-                    init_val = DirectiveMeta._directive_init_values.get(dictionary, {})
+                init_val = DirectiveMeta._directive_init_values.get(dictionary, {})
                 setattr(cls, f"_{dictionary}", _copy_directive_value(init_val))
                 initialized_dicts.append(dictionary)
 
@@ -140,9 +132,8 @@ class DirectiveMeta(abc.ABCMeta):
     _directive_init_values: Dict[str, Any] = {}
     # List of directives to be executed for the class being defined, preserving definition order
     _directives_to_be_executed: List[Tuple[str, Any]] = []
-    # Directive functions and classes
+    # Directive functions and language types
     _directive_functions: Dict[str, Callable[..., Any]] = {}
-    _directive_classes: Dict[str, type] = {}
     _directive_types: Dict[str, str] = {}
     # Workload-related dictionaries referenced by environment_variable in shared_language
     # that belong exclusively to applications
@@ -194,12 +185,33 @@ class DirectiveMeta(abc.ABCMeta):
     def __new__(
         cls: Type["DirectiveMeta"], name: str, bases: tuple, attr_dict: dict
     ) -> "DirectiveMeta":
+        # Determine language types to scope descriptors
+        lang_types = set(attr_dict.get("_language_types", []))
+        for base in bases:
+            lang_types |= set(getattr(base, "_language_types", []))
+
+        if lang_types:
+            relevant_dicts = set()
+            for d in DirectiveMeta._directive_dict_names:
+                scoped_types = [
+                    t for t, dicts in DirectiveMeta._type_scoped_dicts.items() if d in dicts
+                ]
+                if not scoped_types or any(t in lang_types for t in scoped_types):
+                    relevant_dicts.add(d)
+        else:
+            relevant_dicts = set(DirectiveMeta._directive_dict_names)
+
         # Initialize the attribute containing the list of directives
         # to be executed following MRO order and class definition order.
         merged: List[Tuple[str, Any]] = []
         sources = [getattr(b, "_directives_to_be_executed", None) or [] for b in reversed(bases)]
         for source in sources:
             merged.extend(source)
+
+        # Add descriptors for known directive dictionaries
+        for dict_name in relevant_dicts:
+            attr_dict.setdefault(f"_{dict_name}", _UNSET)
+            attr_dict[dict_name] = DirectiveMeta._get_descriptor(dict_name)
 
         defining_id = object()
         for _, directive in DirectiveMeta._directives_to_be_executed:
@@ -221,49 +233,7 @@ class DirectiveMeta(abc.ABCMeta):
         merged = deduped
 
         attr_dict["_directives_to_be_executed"] = merged
-
-        # Determine language types to scope descriptors
-        lang_types = set(attr_dict.get("_language_types", [])) | set(
-            attr_dict.get("_language_classes", [])
-        )
-        for base in bases:
-            lang_types |= set(getattr(base, "_language_types", [])) | set(
-                getattr(base, "_language_classes", [])
-            )
-
-        if lang_types:
-            relevant_dicts = set()
-            for d in DirectiveMeta._directive_dict_names:
-                scoped_types = [
-                    t for t, dicts in DirectiveMeta._type_scoped_dicts.items() if d in dicts
-                ]
-                if not scoped_types or any(t in lang_types for t in scoped_types):
-                    relevant_dicts.add(d)
-        else:
-            relevant_dicts = set(DirectiveMeta._directive_dict_names)
-
-        # Collect class-level attribute initial values
-        class_directive_values = {}
-        for base in bases:
-            if hasattr(base, "_class_directive_values"):
-                class_directive_values.update(base._class_directive_values)
-
-        # Add descriptors for known directive dictionaries
-        for dict_name in relevant_dicts:
-            if dict_name in attr_dict and attr_dict[
-                dict_name
-            ] is not DirectiveMeta._get_descriptor(dict_name):
-                val = attr_dict.pop(dict_name)
-                default_init = DirectiveMeta._directive_init_values.get(dict_name, {})
-                if default_init is None or isinstance(val, type(default_init)):
-                    class_directive_values[dict_name] = val
-            attr_dict.setdefault(f"_{dict_name}", _UNSET)
-            attr_dict[dict_name] = DirectiveMeta._get_descriptor(dict_name)
-
-        attr_dict["_class_directive_values"] = class_directive_values
-
         attr_dict["_directive_functions"] = dict(DirectiveMeta._directive_functions)
-        attr_dict["_directive_classes"] = dict(DirectiveMeta._directive_classes)
         attr_dict["_directive_types"] = dict(DirectiveMeta._directive_types)
         attr_dict["_directive_dict_names"] = relevant_dicts
 
@@ -404,7 +374,6 @@ class DirectiveMeta(abc.ABCMeta):
         def _decorator(decorated_function: Callable[..., Any]) -> Callable[..., Any]:
             func_name = decorated_function.__name__
             DirectiveMeta.register_directive(func_name, dicts_tuple)
-            DirectiveMeta._directive_classes[func_name] = cls
             DirectiveMeta._directive_types[func_name] = language_type
             DirectiveMeta._directive_functions[func_name] = decorated_function
 

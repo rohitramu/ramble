@@ -23,7 +23,6 @@ class UtilityBase(ObjectMixin, metaclass=DirectiveMeta):
         ("utility_builtin", "{obj_name}", "{name}")
     )
     _language_types = ["utility", "shared"]
-    _language_classes = _language_types
     pipelines = [
         pipeline_enum.setup,
     ]

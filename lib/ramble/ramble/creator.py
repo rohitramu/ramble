@@ -101,8 +101,8 @@ def create_object(
     resolved_base = base_class or default_base
 
     # Format metadata variables
-    m_list = maintainers or []
-    t_list = tags or []
+    m_args = ", ".join(repr(m) for m in (maintainers or []))
+    t_args = ", ".join(repr(t) for t in (tags or []))
 
     # Write stub contents
     fs.mkdirp(obj_dir)
@@ -112,8 +112,8 @@ def create_object(
                 class_name=class_name,
                 base_class=resolved_base,
                 name=name,
-                maintainers=repr(m_list),
-                tags=repr(t_list),
+                maintainers=m_args,
+                tags=t_args,
             )
         )
 

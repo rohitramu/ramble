@@ -15,16 +15,11 @@ def define_directive_methods_on_class(cls):
     if not hasattr(cls, "_directive_functions"):
         return
 
-    lang_types = set(getattr(cls, "_language_types", [])) | set(
-        getattr(cls, "_language_classes", [])
-    )
+    lang_types = set(getattr(cls, "_language_types", []))
     directive_types = getattr(cls, "_directive_types", {})
-    directive_classes = getattr(cls, "_directive_classes", {})
 
     for directive in cls._directive_functions:
-        d_type = directive_types.get(directive)
-        d_cls = directive_classes.get(directive)
-        if (d_type in lang_types or d_cls in lang_types) and not hasattr(cls, directive):
+        if directive_types.get(directive) in lang_types and not hasattr(cls, directive):
             setattr(cls, directive, wrap_named_directive_class_level(directive))
 
 

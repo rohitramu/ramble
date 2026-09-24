@@ -18,7 +18,7 @@ import shutil
 import stat
 import time
 from html import escape
-from typing import Dict, List
+from typing import Dict
 
 import llnl.util.filesystem as fs
 from llnl.util.tty import color
@@ -164,7 +164,6 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
     _status_file_name = "ramble_status.json"
     pipelines = list(pipeline_enum)
     _language_types = ["application", "shared"]
-    _language_classes = _language_types
 
     variant(
         "inject_modifiers_from_directives",
@@ -176,8 +175,6 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
         default=False,
         description="Whether this experiment is run inside a container",
     )
-
-    license_names: List[str] = []
 
     archive_pattern("{experiment_run_dir}/" + ExperimentResult.cache_file_name)
 

@@ -28,7 +28,6 @@ class PlatformBase(ObjectMixin, metaclass=DirectiveMeta):
         ("platform_builtin", "{obj_name}", "{name}")
     )
     _language_types = ["platform", "shared"]
-    _language_classes = _language_types
 
     variant(
         "accelerator",
