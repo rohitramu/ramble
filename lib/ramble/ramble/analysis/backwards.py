@@ -14,9 +14,8 @@ import ramble.success_criteria
 import ramble.util.lock as lk
 from ramble.analysis.base import AnalysisStrategyBase
 from ramble.experiment_result import ExperimentStatus
+from ramble.util.foms import NULL_CONTEXT as _NULL_CONTEXT
 from ramble.util.logger import logger
-
-_NULL_CONTEXT = "null"
 
 
 def _get_context_display_name(context):

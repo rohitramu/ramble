@@ -58,8 +58,14 @@ from ramble.language.shared_language import (
     register_phase,
     variant,
 )
+from ramble.pipeline import pipelines as pipeline_enum
 from ramble.util import cleaner, conversions, json_util
-from ramble.util.foms import FomType, SummaryFoms, get_literal_from_regex
+from ramble.util.foms import NULL_CONTEXT as _NULL_CONTEXT
+from ramble.util.foms import (
+    FomType,
+    SummaryFoms,
+    get_literal_from_regex,
+)
 from ramble.util.format import when_order
 from ramble.util.logger import logger
 from ramble.util.naming import NS_SEPARATOR
@@ -72,8 +78,6 @@ import spack.util.environment
 import spack.util.executable
 
 ObjectMixin = ramble.repository.get_base_class("object-mixin")
-
-_NULL_CONTEXT = "null"
 
 _DEFAULT_CONTENT_PERM = (
     stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH
@@ -158,17 +162,7 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
     _builtin_required_key = "required"
     _inventory_file_name = "ramble_inventory.json"
     _status_file_name = "ramble_status.json"
-    pipelines = [
-        "analyze",
-        "archive",
-        "bootstrap",
-        "mirror",
-        "setup",
-        "pushdeployment",
-        "pushtocache",
-        "execute",
-        "logs",
-    ]
+    pipelines = list(pipeline_enum)
     _language_types = ["application", "shared"]
     _language_classes = _language_types
 

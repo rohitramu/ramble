@@ -22,6 +22,7 @@ from ramble.language.modifier_language import (
     mode,
     modifier_conflict,
 )
+from ramble.pipeline import pipelines as pipeline_enum
 from ramble.util.conflicts import MODIFIER_CONFLICT
 from ramble.util.logger import logger
 from ramble.util.naming import NS_SEPARATOR
@@ -39,13 +40,13 @@ class ModifierBase(ObjectMixin, metaclass=DirectiveMeta):
     _language_types = ["modifier", "shared"]
     _language_classes = _language_types
     pipelines = [
-        "analyze",
-        "archive",
-        "mirror",
-        "setup",
-        "pushtocache",
-        "execute",
-        "logs",
+        pipeline_enum.analyze,
+        pipeline_enum.archive,
+        pipeline_enum.mirror,
+        pipeline_enum.setup,
+        pipeline_enum.pushtocache,
+        pipeline_enum.execute,
+        pipeline_enum.logs,
     ]
 
     modifier_class = "ModifierBase"

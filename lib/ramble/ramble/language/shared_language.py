@@ -16,7 +16,7 @@ import ramble.language.language_helpers
 import ramble.success_criteria
 import ramble.variants
 from ramble.definitions.versions import ObjectVersion
-from ramble.util.foms import FomType
+from ramble.util.foms import NULL_CONTEXT, FomType
 from ramble.util.logger import logger
 from ramble.util.spec_utils import SoftwareSpec
 
@@ -564,7 +564,7 @@ def success_criteria(
     match=None,
     file="{log_file}",
     fom_name=None,
-    fom_context="null",
+    fom_context=NULL_CONTEXT,
     formula=None,
     anti_match=None,
     when=None,

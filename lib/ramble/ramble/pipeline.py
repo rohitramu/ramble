@@ -12,7 +12,6 @@ import os
 import shlex
 import shutil
 import stat
-from enum import Enum
 
 import llnl.util.filesystem as fs
 from llnl.util import tty
@@ -40,6 +39,23 @@ if not ramble.config.get("config:disable_progress_bar", False):
         import tqdm
     except ModuleNotFoundError:
         logger.die("Module `tqdm` is not found. Ensure requirements.txt are installed.")
+
+
+class _PipelinesMeta(type):
+    def __iter__(cls):
+        return (v for k, v in vars(cls).items() if not k.startswith("_") and isinstance(v, str))
+
+
+class pipelines(metaclass=_PipelinesMeta):
+    analyze = "analyze"
+    archive = "archive"
+    bootstrap = "bootstrap"
+    mirror = "mirror"
+    setup = "setup"
+    pushtocache = "pushtocache"
+    execute = "execute"
+    pushdeployment = "pushdeployment"
+    logs = "logs"
 
 
 class Pipeline:
@@ -264,7 +280,7 @@ class Pipeline:
 class AnalyzePipeline(Pipeline):
     """Class for the analyze pipeline"""
 
-    name = "analyze"
+    name = pipelines.analyze
 
     def __init__(
         self,
@@ -342,7 +358,7 @@ class AnalyzePipeline(Pipeline):
 class ArchivePipeline(Pipeline):
     """Class for the archive pipeline"""
 
-    name = "archive"
+    name = pipelines.archive
 
     def __init__(
         self,
@@ -501,7 +517,7 @@ class ArchivePipeline(Pipeline):
 class MirrorPipeline(Pipeline):
     """Class for the mirror pipeline"""
 
-    name = "mirror"
+    name = pipelines.mirror
 
     def __init__(self, workspace, filters, mirror_path=None):
         super().__init__(workspace, filters)
@@ -541,7 +557,7 @@ class MirrorPipeline(Pipeline):
 class BootstrapPipeline(Pipeline):
     """Class for the bootstrap pipeline"""
 
-    name = "bootstrap"
+    name = pipelines.bootstrap
 
     def __init__(self, workspace, filters):
         super().__init__(workspace, filters)
@@ -551,7 +567,7 @@ class BootstrapPipeline(Pipeline):
 class SetupPipeline(Pipeline):
     """Class for the setup pipeline"""
 
-    name = "setup"
+    name = pipelines.setup
 
     def __init__(self, workspace, filters):
         super().__init__(workspace, filters)
@@ -617,7 +633,7 @@ class SetupPipeline(Pipeline):
 class PushToCachePipeline(Pipeline):
     """Class for the pushtocache pipeline"""
 
-    name = "pushtocache"
+    name = pipelines.pushtocache
 
     def __init__(self, workspace, filters, spack_cache_path=None):
         super().__init__(workspace, filters)
@@ -636,7 +652,7 @@ class PushToCachePipeline(Pipeline):
 class ExecutePipeline(Pipeline):
     """class for the `execute` (`on`) pipeline"""
 
-    name = "execute"
+    name = pipelines.execute
 
     def __init__(
         self,
@@ -695,7 +711,7 @@ class ExecutePipeline(Pipeline):
 class LogsPipeline(Pipeline):
     """class for the `logs` pipeline"""
 
-    name = "logs"
+    name = pipelines.logs
 
     def __init__(
         self,
@@ -773,7 +789,7 @@ class LogsPipeline(Pipeline):
 class PushDeploymentPipeline(Pipeline):
     """class for the `prepare-deployment` pipeline"""
 
-    name = "pushdeployment"
+    name = pipelines.pushdeployment
     index_filename = "index.json"
     index_namespace = "deployment_files"
     tar_extension = ".tar.gz"
@@ -895,21 +911,6 @@ def _upload_file(src_file, dest_file):
     fetcher.stage.archive_file = src_file
     fetcher.archive(dest_file)
 
-
-pipelines = Enum(
-    "pipelines",
-    [
-        "analyze",
-        "archive",
-        "bootstrap",
-        "mirror",
-        "setup",
-        "pushtocache",
-        "execute",
-        "pushdeployment",
-        "logs",
-    ],
-)
 
 _pipeline_map = {
     pipelines.analyze: AnalyzePipeline,

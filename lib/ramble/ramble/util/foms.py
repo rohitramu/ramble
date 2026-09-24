@@ -11,6 +11,8 @@ import functools
 import re
 from enum import Enum
 
+NULL_CONTEXT = "null"
+
 
 # For a FOM, the direction that is 'better' e.g., faster is better
 class BetterDirection(Enum):
@@ -53,7 +55,7 @@ class FomType(Enum):
         return _FOM_TYPE_DICTS[self]
 
 
-class SummaryFoms(Enum):
+class SummaryFoms(str, Enum):
     SUMMARY = "Experiment Summary"
     N_TOTAL = "n_total_repeats"
     N_SUCCESS = "n_success_repeats"

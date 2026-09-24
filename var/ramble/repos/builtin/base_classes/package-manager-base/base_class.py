@@ -16,6 +16,7 @@ import ramble.definitions.families
 import ramble.repository
 from ramble.language.language_base import DirectiveMeta
 from ramble.language.shared_language import register_phase
+from ramble.pipeline import pipelines as pipeline_enum
 from ramble.software_environments import (
     RambleSoftwareEnvironmentError,
     TemplatePackage,
@@ -34,14 +35,14 @@ class PackageManagerBase(ObjectMixin, metaclass=DirectiveMeta):
     _language_types = ["package_manager", "shared"]
     _language_classes = _language_types
     pipelines = [
-        "analyze",
-        "archive",
-        "mirror",
-        "setup",
-        "pushdeployment",
-        "pushtocache",
-        "execute",
-        "logs",
+        pipeline_enum.analyze,
+        pipeline_enum.archive,
+        pipeline_enum.mirror,
+        pipeline_enum.setup,
+        pipeline_enum.pushdeployment,
+        pipeline_enum.pushtocache,
+        pipeline_enum.execute,
+        pipeline_enum.logs,
     ]
 
     _spec_groups = [
