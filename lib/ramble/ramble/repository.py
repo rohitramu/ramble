@@ -96,10 +96,10 @@ def simplify_object_type(type_name):
     """Convert a type string or ObjectTypes member to an ObjectTypes enum member.
 
     Args:
-        type_name (ObjectTypes | str): Object type to simplify / normalize.
+        type_name (ramble.object_types.ObjectTypes | str): Object type to simplify / normalize.
 
     Returns:
-        (ObjectTypes): The matching ObjectTypes enum member.
+        (ramble.object_types.ObjectTypes): The matching ObjectTypes enum member.
 
     Raises:
         UnknownObjectTypeError: If type_name does not match any valid object type.
