@@ -14,6 +14,8 @@
 
 from typing import Any, Dict, List, Optional
 
+from ramble.object_types import type_definitions
+
 
 def make_repo_properties(section_name: str) -> Dict[str, Any]:
     """Generates the jsonschema properties dict for a repository configuration section."""
@@ -45,23 +47,7 @@ def make_repo_schema(section_name: str, title: Optional[str] = None) -> Dict[str
 
 
 #: All repository configuration sections in Ramble
-REPO_SECTIONS: List[str] = [
-    "repos",
-    "modifier_repos",
-    "package_manager_repos",
-    "workflow_manager_repos",
-    "system_repos",
-    "platform_repos",
-    "base_class_repos",
-    "base_application_repos",
-    "base_modifier_repos",
-    "base_package_manager_repos",
-    "base_workflow_manager_repos",
-    "base_system_repos",
-    "base_platform_repos",
-    "utility_repos",
-    "base_utility_repos",
-]
+REPO_SECTIONS: List[str] = [obj_info["config_section"] for obj_info in type_definitions.values()]
 
 #: Dict containing properties for all repository sections
 properties: Dict[str, Any] = {}

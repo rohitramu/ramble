@@ -258,7 +258,7 @@ def test_edit_object_fallback_namespace():
 
 def test_edit_object_fallback_custom_type_not_found(mock_modifiers):
     output = edit("non-existent-modifier", "-t", "modifiers", fail_on_error=False)
-    assert "No modifiers for 'non-existent-modifier' was found" in output
+    assert "No modifier for 'non-existent-modifier' was found" in output
 
 
 def test_edit_no_name_default_editor(mock_editor):

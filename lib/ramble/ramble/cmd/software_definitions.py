@@ -43,10 +43,9 @@ def collect_definitions():
     top_level_attrs = ["compilers", "software_specs"]
 
     types_to_print = [
-        ramble.repository.ObjectTypes.applications,
-        ramble.repository.ObjectTypes.modifiers,
-        ramble.repository.ObjectTypes.workflow_managers,
-        ramble.repository.ObjectTypes.package_managers,
+        obj_type
+        for obj_type in ramble.repository.type_definitions
+        if not obj_type.name.startswith("base_")
     ]
 
     for object_type in types_to_print:
