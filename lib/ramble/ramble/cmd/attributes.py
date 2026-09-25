@@ -154,8 +154,10 @@ def union_values(dictionary):
 
 def attributes(parser, args):
     object_type = ramble.repository.default_type
-    if args.modifiers:
-        object_type = ramble.repository.ObjectTypes.modifiers
+    for obj in ramble.repository.ObjectTypes:
+        if getattr(args, obj.name, False):
+            object_type = obj
+            break
 
     attr_name = default_attr
     if args.tags:

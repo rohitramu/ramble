@@ -252,11 +252,8 @@ def edit(parser, args):
                     logger.die(f"Something is wrong. '{path}' is not a file!")
 
             # Print standard error message
-            if type_name == ramble.repository.default_type.name:
-                logger.die(f"No application for '{name}' was found.")
-            else:
-                # For other object types, print a generic not found message
-                logger.die(f"No {type_name} for '{name}' was found.")
+            singular = ramble.repository.type_definitions[obj_type]["singular"]
+            logger.die(f"No {singular} for '{name}' was found.")
     else:
         # By default, open the directory where applications live
         path = ramble.paths.builtin_path

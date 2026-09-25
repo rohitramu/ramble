@@ -128,18 +128,12 @@ class ObjectMixin(metaclass=SharedMeta):
         return self
 
     def _get_object_type(self):
-        if self.origin_type == "application":
-            return ObjectTypes.applications
-        elif self.origin_type == "package_manager":
-            return ObjectTypes.package_managers
-        elif self.origin_type == "workflow_manager":
-            return ObjectTypes.workflow_managers
-        elif self.origin_type == "modifier":
-            return ObjectTypes.modifiers
-        elif self.origin_type == "system":
-            return ObjectTypes.systems
-        elif self.origin_type == "platform":
-            return ObjectTypes.platforms
+        origin_type = getattr(self, "origin_type", None)
+        if origin_type:
+            try:
+                return ramble.repository.simplify_object_type(origin_type)
+            except ramble.repository.UnknownObjectTypeError:
+                return None
         return None
 
     def satisfy_when(self, when_key, variant_set=None):
@@ -168,9 +162,15 @@ class ObjectMixin(metaclass=SharedMeta):
             for known_version in self.known_versions.values():
                 if current_ver.version == known_version.version:
                     return
+            obj_type = self._get_object_type()
+            obj_file = (
+                ramble.repository.type_definitions[obj_type]["file_name"]
+                if obj_type in ramble.repository.type_definitions
+                else f"{self.origin_type}.py"
+            )
             raise ObjectValidationError(
                 f"The current version {current_ver.version} is not defined in the "
-                f"{self.origin_type}.py. You must select from defined versions. Set "
+                f"{obj_file}. You must select from defined versions. Set "
                 "config:enable_strict_versions:false to disable strict version checking."
             )
 
