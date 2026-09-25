@@ -9,6 +9,7 @@
 import os
 from enum import Enum
 
+from ramble.keywords import keywords
 from ramble.namespace import namespace
 from ramble.software_info import SoftwareInfo
 from ramble.util import json_util
@@ -31,22 +32,48 @@ class ExperimentStatus(str, Enum):
     CANCELLED = "CANCELLED"
     TIMEOUT = "TIMEOUT"
 
+    def __str__(self) -> str:
+        return self.value
+
+
+class _StrConstantsMeta(type):
+    def __iter__(cls):
+        return (v for k, v in vars(cls).items() if not k.startswith("_") and isinstance(v, str))
+
+
+class ResultKeys(metaclass=_StrConstantsMeta):
+    NAME = "name"
+    STATUS = "EXPERIMENT_STATUS"
+    N_REPEATS = "N_REPEATS"
+    KEYS = "keys"
+    CONTEXTS = "CONTEXTS"
+    SOFTWARE = "SOFTWARE"
+    VARIABLES = "RAMBLE_VARIABLES"
+    RAW_VARIABLES = "RAMBLE_RAW_VARIABLES"
+    TAGS = "TAGS"
+    VARIANTS = "VARIANTS"
+    EXPERIMENT_CHAIN = "EXPERIMENT_CHAIN"
+    SUCCESS_CRITERIA = "SUCCESS_CRITERIA"
+    OBJECT_DEFINITIONS = "OBJECT_DEFINITIONS"
+
 
 _OUTPUT_MAPPING = {
-    "name": "name",
-    "status": "EXPERIMENT_STATUS",
-    namespace.n_repeats: "N_REPEATS",
-    "keys": "keys",
-    "contexts": "CONTEXTS",
-    "software": "SOFTWARE",
-    namespace.variables: "RAMBLE_VARIABLES",
-    "raw_variables": "RAMBLE_RAW_VARIABLES",
-    namespace.tags: "TAGS",
-    namespace.variants: "VARIANTS",
-    "experiment_chain": "EXPERIMENT_CHAIN",
-    "success_criteria": "SUCCESS_CRITERIA",
-    "object_definitions": "OBJECT_DEFINITIONS",
+    "name": ResultKeys.NAME,
+    "status": ResultKeys.STATUS,
+    namespace.n_repeats: ResultKeys.N_REPEATS,
+    "keys": ResultKeys.KEYS,
+    "contexts": ResultKeys.CONTEXTS,
+    namespace.software: ResultKeys.SOFTWARE,
+    namespace.variables: ResultKeys.VARIABLES,
+    "raw_variables": ResultKeys.RAW_VARIABLES,
+    namespace.tags: ResultKeys.TAGS,
+    namespace.variants: ResultKeys.VARIANTS,
+    "experiment_chain": ResultKeys.EXPERIMENT_CHAIN,
+    namespace.success: ResultKeys.SUCCESS_CRITERIA,
+    "object_definitions": ResultKeys.OBJECT_DEFINITIONS,
 }
+
+OUTPUT_MAPPING = _OUTPUT_MAPPING
 
 
 # TODO: would be better to use dataclass after 3.6 support is dropped
@@ -93,8 +120,8 @@ class ExperimentResult:
             cache_dict = json_util.load(f)
 
         if (
-            "experiment_hash" not in cache_dict
-            or app_inst.experiment_hash != cache_dict["experiment_hash"]
+            keywords.experiment_hash not in cache_dict
+            or app_inst.experiment_hash != cache_dict[keywords.experiment_hash]
         ):
             logger.all_msg("Invalidating experiment results cache: experiment hash difference")
             return False
@@ -108,9 +135,9 @@ class ExperimentResult:
         cache_file = os.path.join(experiment_dir, self.cache_file_name)
 
         out_dict = self.to_dict()
-        out_dict["experiment_hash"] = app_inst.experiment_hash
+        out_dict[keywords.experiment_hash] = app_inst.experiment_hash
 
-        software_key = _OUTPUT_MAPPING["software"]
+        software_key = ResultKeys.SOFTWARE
         software_packages = {}
         if software_key in out_dict:
             software_packages = out_dict[software_key].copy()
@@ -163,7 +190,7 @@ class ExperimentResult:
             if output_key in in_dict:
                 setattr(self, lookup_key, in_dict[output_key])
 
-        software_key = _OUTPUT_MAPPING["software"]
+        software_key = ResultKeys.SOFTWARE
         if software_key in in_dict:
             self.software = {}
             for key, pkg_list in in_dict[software_key].items():

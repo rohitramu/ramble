@@ -40,11 +40,14 @@ import ramble.util.lock as lk
 import ramble.util.path
 import ramble.util.version
 import ramble.util.web as web_util
+from ramble.experiment_result import ResultKeys
+from ramble.keywords import keywords
 from ramble.mirror import MirrorStats
 from ramble.namespace import namespace
 from ramble.util import json_util
 from ramble.util.conversions import list_str_to_list, strip_quotes
 from ramble.util.logger import logger
+from ramble.util.naming import NS_SEPARATOR
 from ramble.util.path import substitute_path_variables
 
 import spack.util.spack_yaml as syaml
@@ -108,10 +111,13 @@ CONFIG_FILE_NAME = "ramble.yaml"
 LICENSES_FILE_NAME = "licenses.yaml"
 
 METADATA_FILE_NAME = "workspace_metadata.yaml"
+INVENTORY_FILE_NAME = "ramble_inventory.json"
+STATUS_FILE_NAME = "ramble_status.json"
 
 WORKSPACE_ALL_EXPERIMENTS_FILE = "all_experiments"
 
-WORKSPACE_EXECUTION_TEMPLATE = "execute_experiment" + TEMPLATE_EXTENSION
+WORKSPACE_EXECUTION_SCRIPT = "execute_experiment"
+WORKSPACE_EXECUTION_TEMPLATE = WORKSPACE_EXECUTION_SCRIPT + TEMPLATE_EXTENSION
 
 #: Name of lockfile within a workspace
 LOCKFILE_NAME = "ramble.lock"
@@ -442,7 +448,7 @@ class Workspace:
     can be performed.
     """
 
-    inventory_file_name = "ramble_inventory.json"
+    inventory_file_name = INVENTORY_FILE_NAME
     hash_file_name = "workspace_hash.sha256"
 
     def __init__(self, root, dry_run=False, read_default_template=True):
@@ -1705,7 +1711,7 @@ ramble:
 
     def write_software_info(self, f, exp):
         f.write("  Software definitions:\n")
-        for package_manager, packages in exp["SOFTWARE"].items():
+        for package_manager, packages in exp[ResultKeys.SOFTWARE].items():
             f.write(f"    {package_manager} packages:\n")
             if not packages:
                 f.write("      None\n")
@@ -1785,13 +1791,15 @@ ramble:
                 f.write(f"From Workspace: {self.name} (hash: {results['workspace_hash']})\n")
                 if namespace.experiment in results:
                     for exp in results[namespace.experiment]:
-                        f.write(f"Experiment {exp['name']} figures of merit:\n")
-                        f.write(f"  Status = {exp['RAMBLE_STATUS']}\n")
-                        if "TAGS" in exp:
-                            f.write(f'  Tags = {exp["TAGS"]}\n')
+                        f.write(f"Experiment {exp[ResultKeys.NAME]} figures of merit:\n")
+                        f.write(f"  Status = {exp[keywords.RAMBLE_STATUS]}\n")
+                        if ResultKeys.TAGS in exp:
+                            f.write(f"  Tags = {exp[ResultKeys.TAGS]}\n")
 
-                        if exp["N_REPEATS"] > 0:  # this is a base exp with summary of repeats
-                            for context in exp["CONTEXTS"]:
+                        if (
+                            exp[ResultKeys.N_REPEATS] > 0
+                        ):  # this is a base exp with summary of repeats
+                            for context in exp[ResultKeys.CONTEXTS]:
                                 f.write(f'  {context["display_name"]} figures of merit:\n')
 
                                 fom_summary = {}
@@ -1800,7 +1808,7 @@ ramble:
                                     if name not in fom_summary:
                                         fom_summary[name] = []
                                     stat_name = fom["origin_type"]
-                                    if not stat_name.startswith("summary::"):
+                                    if not stat_name.startswith(f"summary{NS_SEPARATOR}"):
                                         display_name = "value"
                                     else:
                                         display_name = stat_name
@@ -1818,12 +1826,12 @@ ramble:
                                 self.write_software_info(f, exp)
 
                         else:
-                            for context in exp["CONTEXTS"]:
+                            for context in exp[ResultKeys.CONTEXTS]:
                                 f.write(f'  {context["display_name"]} figures of merit:\n')
                                 for fom in context["foms"]:
                                     name = fom["name"]
                                     if fom["origin_type"] == "modifier":
-                                        delim = "::"
+                                        delim = NS_SEPARATOR
                                         mod = fom["origin"]
                                         name = f"{fom['origin_type']}{delim}{mod}{delim}{name}"
 
@@ -1833,14 +1841,14 @@ ramble:
                             if exp.get(software_key):
                                 self.write_software_info(f, exp)
 
-                        if exp["VARIANTS"]:
+                        if exp[ResultKeys.VARIANTS]:
                             f.write("  Experiment variants:\n")
-                            for variant in exp["VARIANTS"]:
+                            for variant in exp[ResultKeys.VARIANTS]:
                                 f.write(f"  - {variant}\n")
 
-                        if exp["SUCCESS_CRITERIA"]:
+                        if exp[ResultKeys.SUCCESS_CRITERIA]:
                             f.write("  Success criteria summary:\n")
-                            for name, result in exp["SUCCESS_CRITERIA"].items():
+                            for name, result in exp[ResultKeys.SUCCESS_CRITERIA].items():
                                 f.write(f"    {name} = {result}\n")
                 else:
                     logger.msg("No results to write")
@@ -2270,18 +2278,18 @@ ramble:
     def get_workspace_paths(cls, root):
         """Construct dictionary of path replacements for workspace"""
         workspace_path_replacements = {
-            "workspace_root": root,
+            keywords.workspace_root: root,
             namespace.workspace: root,
-            "workspace_configs": os.path.join(root, WORKSPACE_CONFIG_PATH),
-            "workspace_software": os.path.join(root, WORKSPACE_SOFTWARE_PATH),
+            keywords.workspace_configs: os.path.join(root, WORKSPACE_CONFIG_PATH),
+            keywords.workspace_software: os.path.join(root, WORKSPACE_SOFTWARE_PATH),
             "workspace_tables": os.path.join(root, WORKSPACE_TABLES_PATH),
             "workspace_results": os.path.join(root, WORKSPACE_RESULTS_PATH),
-            "workspace_logs": os.path.join(root, WORKSPACE_LOG_PATH),
-            "workspace_inputs": os.path.join(root, WORKSPACE_INPUT_PATH),
-            "workspace_experiments": os.path.join(root, WORKSPACE_EXPERIMENT_PATH),
-            "workspace_shared": os.path.join(root, WORKSPACE_SHARED_PATH),
-            "workspace_archives": os.path.join(root, WORKSPACE_ARCHIVE_PATH),
-            "workspace_deployments": os.path.join(root, WORKSPACE_DEPLOYMENTS_PATH),
+            keywords.workspace_logs: os.path.join(root, WORKSPACE_LOG_PATH),
+            keywords.workspace_inputs: os.path.join(root, WORKSPACE_INPUT_PATH),
+            keywords.workspace_experiments: os.path.join(root, WORKSPACE_EXPERIMENT_PATH),
+            keywords.workspace_shared: os.path.join(root, WORKSPACE_SHARED_PATH),
+            keywords.workspace_archives: os.path.join(root, WORKSPACE_ARCHIVE_PATH),
+            keywords.workspace_deployments: os.path.join(root, WORKSPACE_DEPLOYMENTS_PATH),
         }
 
         return workspace_path_replacements
@@ -2853,12 +2861,12 @@ def _filter_results(results, summary_only, fom_origin_types=None):
 
     filtered_experiments = []
     for r in results[namespace.experiment]:
-        if summary_only and r["N_REPEATS"] == 0:
+        if summary_only and r[ResultKeys.N_REPEATS] == 0:
             continue
 
         if fom_origin_types:
             filtered_contexts = []
-            for context in r.get("CONTEXTS", []):
+            for context in r.get(ResultKeys.CONTEXTS, []):
                 filtered_foms = [
                     fom
                     for fom in context.get("foms", [])
@@ -2867,7 +2875,7 @@ def _filter_results(results, summary_only, fom_origin_types=None):
                 if filtered_foms:
                     context["foms"] = filtered_foms
                     filtered_contexts.append(context)
-            r["CONTEXTS"] = filtered_contexts
+            r[ResultKeys.CONTEXTS] = filtered_contexts
 
         filtered_experiments.append(r)
 

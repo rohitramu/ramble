@@ -71,7 +71,13 @@ from ramble.util.logger import logger
 from ramble.util.naming import NS_SEPARATOR
 from ramble.util.output_capture import output_mapper
 from ramble.util.shell_utils import source_str
-from ramble.workspace import LICENSE_INC_NAME, TEMPLATE_EXTENSION, namespace
+from ramble.workspace import (
+    INVENTORY_FILE_NAME,
+    LICENSE_INC_NAME,
+    STATUS_FILE_NAME,
+    TEMPLATE_EXTENSION,
+    namespace,
+)
 
 import spack.util.compression
 import spack.util.environment
@@ -160,8 +166,8 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
     origin_type = "application"
     _builtin_name = NS_SEPARATOR.join(("builtin", "{name}"))
     _builtin_required_key = "required"
-    _inventory_file_name = "ramble_inventory.json"
-    _status_file_name = "ramble_status.json"
+    _inventory_file_name = INVENTORY_FILE_NAME
+    _status_file_name = STATUS_FILE_NAME
     pipelines = list(pipeline_enum)
     _language_types = ["application", "shared"]
 
@@ -3225,10 +3231,10 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
         workspace = self.workspace
 
         remove_variables = [
-            "workspace_name",
-            "experiment_hash",
-            "experiment_status",
-            "RAMBLE_STATUS",
+            self.keywords.workspace_name,
+            self.keywords.experiment_hash,
+            self.keywords.experiment_status,
+            self.keywords.RAMBLE_STATUS,
         ]
 
         remove_prefixes = set()
