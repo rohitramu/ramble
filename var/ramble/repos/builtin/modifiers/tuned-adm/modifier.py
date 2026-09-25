@@ -10,8 +10,6 @@ import os
 
 from ramble.modkit import *
 
-SUCCESS_STRING = "Status: SUCCESS"
-
 
 class TunedAdm(BasicModifier):
     """Define a modifier for TunedAdm
@@ -58,32 +56,23 @@ class TunedAdm(BasicModifier):
 
         profiles = set()
         with open(read_profile_path, encoding="utf-8") as f:
-
             for line in f:
                 if "active profile:" in line:
                     profiles.add(line.split(":")[-1].strip())
-            profiles_str = ",".join(profiles)
 
         if profiles:
-            expected_profile = self.expander.expand_var("{tuned-profile}")
-            write_profile_path = os.path.join(run_dir, "all_tuning_profiles")
-            with open(write_profile_path, "w+", encoding="utf-8") as f:
-                profiles_str = ",".join(profiles)
-                f.write(f"Applied profiles: {profiles_str}\n")
-                if len(profiles) == 1 and profiles_str == expected_profile:
-                    f.write(SUCCESS_STRING)
+            profiles_str = ",".join(sorted(profiles))
+            self.add_inmem_fom_value("tuned_adm_profiles", profiles_str)
 
     figure_of_merit(
         "Tuning Profile",
-        fom_regex=r"Applied profiles:\s*(?P<profile>.*)",
-        log_file="{experiment_run_dir}/all_tuning_profiles",
-        group_name="profile",
+        fom_map_key="tuned_adm_profiles",
         units="",
     )
 
     success_criteria(
         "Expected tuning profile applied",
-        mode="string",
-        match=SUCCESS_STRING,
-        file="{experiment_run_dir}/all_tuning_profiles",
+        mode="fom_comparison",
+        fom_name="Tuning Profile",
+        formula="'{value}' == '{tuned-profile}'",
     )
