@@ -3534,3 +3534,49 @@ def test_workspace_manage_filter_groups_rm_alias(workspace_name):
         )
         out = workspace("manage", "filter-groups", "list", global_args=global_args)
         assert "test-group" not in out
+
+
+def test_workspace_mirror(workspace_name, tmpdir, monkeypatch, capsys):
+    global_args = ["-w", workspace_name]
+    mirror_dir = str(tmpdir.join("mirror"))
+
+    with ramble.workspace.create(workspace_name) as ws:
+        ws.write()
+        workspace(
+            "manage",
+            "experiments",
+            "basic",
+            "--wf",
+            "working_wl",
+            "-v",
+            "n_ranks=1",
+            "-v",
+            "n_nodes=1",
+            global_args=global_args,
+        )
+
+        run_count = 0
+        orig_run = ramble.pipeline.MirrorPipeline.run
+
+        def counted_run(self):
+            nonlocal run_count
+            run_count += 1
+            return orig_run(self)
+
+        monkeypatch.setattr(ramble.pipeline.MirrorPipeline, "run", counted_run)
+        workspace("mirror", "-d", mirror_dir, global_args=global_args)
+        assert run_count == 1
+
+        # Verify MirrorStats.error() and MirrorPipeline._complete() error reporting
+        ws.create_mirror(mirror_dir)
+        ws.input_mirror_stats.error("failed_input.tar.gz")
+        assert "failed_input.tar.gz" in ws.input_mirror_stats.errors
+        pipeline = ramble.pipeline.MirrorPipeline(
+            ws, ramble.filters.Filters(), mirror_path=mirror_dir
+        )
+        with pytest.raises(SystemExit):
+            pipeline._complete()
+        captured = capsys.readouterr()
+        assert "failed_input.tar.gz" in captured.out
+        assert "Failed downloads:" in captured.err
+        assert "Mirroring has errors." in captured.err

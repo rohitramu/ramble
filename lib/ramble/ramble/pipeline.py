@@ -15,11 +15,13 @@ import stat
 
 import llnl.util.filesystem as fs
 from llnl.util import tty
+from llnl.util.tty.colify import colify
 
 import ramble.config
 import ramble.expander
 import ramble.experiment_result
 import ramble.fetch_strategy
+import ramble.filters
 import ramble.software_environments
 import ramble.stage
 import ramble.uploader
@@ -547,8 +549,8 @@ class MirrorPipeline(Pipeline):
 
         if self.workspace.input_mirror_stats.errors:
             logger.error("Failed downloads:")
-            tty.colify(
-                (s.cformat("{name}") for s in list(self.workspace.input_mirror_stats.errors)),
+            colify(
+                list(self.workspace.input_mirror_stats.errors),
                 output=logger.active_stream(),
             )
             logger.die("Mirroring has errors.")
