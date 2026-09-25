@@ -18,11 +18,15 @@ import ramble.config
 import ramble.expander
 import ramble.repository
 import ramble.util.path
+from ramble.experiment_result import ExperimentStatus, ResultKeys
 from ramble.keywords import keywords
+from ramble.namespace import namespace
 from ramble.util.file_util import create_symlink
 from ramble.util.foms import BetterDirection, FomType, SummaryFoms
 from ramble.util.logger import logger
 from ramble.util.module_utils import import_pandas
+from ramble.util.naming import NS_SEPARATOR
+from ramble.workspace import WORKSPACE_EXECUTION_SCRIPT
 
 import spack.util.spack_yaml as syaml
 
@@ -34,11 +38,11 @@ except ModuleNotFoundError:
 
 
 class ReportVars(Enum):
-    APP_NAME = "application_name"
+    APP_NAME = keywords.application_name
     BETTER_DIRECTION = "better_direction"
     CONTEXT_NAME = "context_name"
-    EXP_NAME = "experiment_name"
-    EXP_NS = "experiment_namespace"
+    EXP_NAME = keywords.experiment_name
+    EXP_NS = keywords.experiment_namespace
     FOM_NAME = "fom_name"
     FOM_ORIGIN = "fom_origin"
     FOM_ORIGIN_TYPE = "fom_origin_type"
@@ -49,8 +53,8 @@ class ReportVars(Enum):
     IDEAL_PERF_VALUE = "ideal_perf_value"
     NORMALIZED_FOM_VALUE = "normalized_fom_value"
     SERIES = "series"
-    WL_NAME = "workload_name"
-    WL_NS = "workload_namespace"
+    WL_NAME = keywords.workload_name
+    WL_NS = keywords.workload_namespace
 
 
 _FOM_DICT_MAPPING = {
@@ -62,23 +66,37 @@ _FOM_DICT_MAPPING = {
 }
 
 # Core experiment metadata extracted for every DataFrame
-_EXP_BASIC_VARS_MAPPING = {
-    "experiment_name": ReportVars.EXP_NAME.value,
-    "experiment_namespace": ReportVars.EXP_NS.value,
-    "application_name": ReportVars.APP_NAME.value,
-    "workload_name": ReportVars.WL_NAME.value,
-    "workload_namespace": ReportVars.WL_NS.value,
-}
+_EXP_BASIC_VARS = (
+    ReportVars.EXP_NAME.value,
+    ReportVars.EXP_NS.value,
+    ReportVars.APP_NAME.value,
+    ReportVars.WL_NAME.value,
+    ReportVars.WL_NS.value,
+)
+_EXP_BASIC_VARS_MAPPING = {v: v for v in _EXP_BASIC_VARS}
 
 _ADDITIONAL_VARS = {
     ReportVars.CONTEXT_NAME.value,
 }
 
+_KEYS_TO_SKIP = frozenset(
+    {
+        *ResultKeys,
+        keywords.batch_submit,
+        keywords.log_file,
+        keywords.experiment_hash,
+        keywords.experiment_status,
+        keywords.RAMBLE_STATUS,
+        namespace.command,
+        WORKSPACE_EXECUTION_SCRIPT,
+    }
+)
+
 INVENTORY_FILENAME = "inventory.yaml"
-OBJECT_NAMES = {}
-for obj in ramble.repository.ObjectTypes:
-    singular = ramble.repository.type_definitions[obj]["singular"]
-    OBJECT_NAMES[singular] = obj.name
+OBJECT_NAMES = {
+    ramble.repository.type_definitions[obj]["singular"]: obj.name
+    for obj in ramble.repository.ObjectTypes
+}
 
 
 def to_numeric_if_possible(series):
@@ -257,10 +275,7 @@ def get_direction_suffix(self):
 
 
 def is_repeat_child(experiment):
-    if int(experiment["RAMBLE_VARIABLES"][keywords.repeat_index]) > 0:
-        return True
-    else:
-        return False
+    return int(experiment[ResultKeys.VARIABLES][keywords.repeat_index]) > 0
 
 
 def is_key_to_skip(key_name: str):
@@ -271,32 +286,7 @@ def is_key_to_skip(key_name: str):
     have limited utility for analysis or are derived from variables that are
     available separately.
     """
-    keys_to_skip = {
-        keywords.batch_submit,
-        keywords.log_file,
-        "command",
-        "execute_experiment",
-        "experiment_hash",
-        "experiment_status",
-        "name",
-        "RAMBLE_STATUS",
-        "CONTEXTS",
-        "RAMBLE_VARIABLES",
-        "RAMBLE_RAW_VARIABLES",
-        "SOFTWARE",
-        "TAGS",
-        "VARIANTS",
-        "EXPERIMENT_CHAIN",
-        "SUCCESS_CRITERIA",
-    }
-
-    skip = False
-    if key_name in keys_to_skip:
-        skip = True
-        return skip
-    elif key_name.endswith(("dir", "path")):
-        skip = True
-    return skip
+    return key_name in _KEYS_TO_SKIP or key_name.endswith(("dir", "path"))
 
 
 def filter_exp_results(experiments: list):
@@ -310,21 +300,21 @@ def filter_exp_results(experiments: list):
     skip_exps = []
 
     for exp in experiments:
-        if exp["name"] in skip_exps or is_repeat_child(exp):
-            logger.debug(f"Skipping import of experiment {exp['name']}")
+        if exp[ResultKeys.NAME] in skip_exps or is_repeat_child(exp):
+            logger.debug(f"Skipping import of experiment {exp[ResultKeys.NAME]}")
             continue
 
-        elif exp["RAMBLE_STATUS"] != "SUCCESS":
+        elif exp[keywords.RAMBLE_STATUS] != ExperimentStatus.SUCCESS:
             continue
         else:
-            logger.debug(f"Importing experiment {exp['name']}")
+            logger.debug(f"Importing experiment {exp[ResultKeys.NAME]}")
             # For repeat experiments, use summary stats from base exp and skip repeats
             # Repeats are sequenced after base exp
 
-            if exp.get("N_REPEATS", 0) > 0:
+            if exp.get(ResultKeys.N_REPEATS, 0) > 0:
                 # Generate repeat experiment names in order to skip them explicitly
-                exp_name = exp["name"]
-                for n in range(1, exp["N_REPEATS"] + 1):
+                exp_name = exp[ResultKeys.NAME]
+                for n in range(1, exp[ResultKeys.N_REPEATS] + 1):
                     if ".chain" in exp_name:
                         insert_idx = exp_name.index(".chain")
                         repeat_exp_name = exp_name[:insert_idx] + f".{n}" + exp_name[insert_idx:]
@@ -365,64 +355,62 @@ def generate_result_index(experiments: list, all_vars=False, where_query=None):
     template_patterns: Dict[str, dict] = {}
     # First unnest dictionaries
     for exp in experiments:
-        if exp["application_name"] not in result_index["applications"]:
-            result_index["applications"][exp["application_name"]] = {}
-        app_dict = result_index["applications"][exp["application_name"]]
+        app_name = exp[keywords.application_name]
+        wl_name = exp[keywords.workload_name]
+        if app_name not in result_index[namespace.application]:
+            result_index[namespace.application][app_name] = {}
+        app_dict = result_index[namespace.application][app_name]
 
-        if exp["workload_name"] not in app_dict:
-            app_dict[exp["workload_name"]] = {
+        if wl_name not in app_dict:
+            app_dict[wl_name] = {
                 "Contexts": set(),
                 "FOMs": set(),
                 "Template Variables": set(),
             }
-        if exp["application_name"] not in template_patterns:
-            template_patterns[exp["application_name"]] = {}
-        if exp["workload_name"] not in template_patterns[exp["application_name"]]:
-            template_patterns[exp["application_name"]][exp["workload_name"]] = set()
+        if app_name not in template_patterns:
+            template_patterns[app_name] = {}
+        if wl_name not in template_patterns[app_name]:
+            template_patterns[app_name][wl_name] = set()
 
         if all_vars:
-            if "All Variables" not in app_dict[exp["workload_name"]]:
-                app_dict[exp["workload_name"]]["All Variables"] = set()
+            if "All Variables" not in app_dict[wl_name]:
+                app_dict[wl_name]["All Variables"] = set()
             for var_name in exp:
                 if is_key_to_skip(var_name):
                     continue
-                app_dict[exp["workload_name"]]["All Variables"].add(var_name)
+                app_dict[wl_name]["All Variables"].add(var_name)
 
-            for var_name in exp["RAMBLE_VARIABLES"]:
+            for var_name in exp[ResultKeys.VARIABLES]:
                 if is_key_to_skip(var_name):
                     continue
-                app_dict[exp["workload_name"]]["All Variables"].add(var_name)
-            app_dict[exp["workload_name"]]["All Variables"].add("context")
+                app_dict[wl_name]["All Variables"].add(var_name)
+            app_dict[wl_name]["All Variables"].add("context")
 
-        if "experiment_template_name" in exp["RAMBLE_RAW_VARIABLES"]:
-            template_patterns[exp["application_name"]][exp["workload_name"]].add(
-                exp["RAMBLE_RAW_VARIABLES"]["experiment_template_name"]
+        if keywords.experiment_template_name in exp[ResultKeys.RAW_VARIABLES]:
+            template_patterns[app_name][wl_name].add(
+                exp[ResultKeys.RAW_VARIABLES][keywords.experiment_template_name]
             )
 
-        for context in exp["CONTEXTS"]:
+        for context in exp[ResultKeys.CONTEXTS]:
             if not context["foms"]:
                 continue
-            app_dict[exp["workload_name"]]["Contexts"].add(context["name"])
+            app_dict[wl_name]["Contexts"].add(context["name"])
             for fom in context["foms"]:
-                if fom["origin"] == exp["application_name"]:
+                if fom["origin"] == app_name:
                     # If it's a repeat summary, add summary FOMs and stat names
                     if fom["name"] == SummaryFoms.SUMMARY.value:
-                        summary_shortname = fom["origin_type"].split("::")[1]
-                        if SummaryFoms.SUMMARY.value not in app_dict[exp["workload_name"]]:
-                            app_dict[exp["workload_name"]][SummaryFoms.SUMMARY.value] = set()
-                        app_dict[exp["workload_name"]][SummaryFoms.SUMMARY.value].add(
-                            summary_shortname
-                        )
+                        summary_shortname = fom["origin_type"].split(NS_SEPARATOR)[1]
+                        if SummaryFoms.SUMMARY.value not in app_dict[wl_name]:
+                            app_dict[wl_name][SummaryFoms.SUMMARY.value] = set()
+                        app_dict[wl_name][SummaryFoms.SUMMARY.value].add(summary_shortname)
                     else:
-                        if fom["origin_type"].startswith("summary::"):
-                            summary_shortname = fom["origin_type"].split("::")[1]
-                            if "FOM Summary Statistics" not in app_dict[exp["workload_name"]]:
-                                app_dict[exp["workload_name"]]["FOM Summary Statistics"] = set()
-                            app_dict[exp["workload_name"]]["FOM Summary Statistics"].add(
-                                summary_shortname
-                            )
+                        if fom["origin_type"].startswith(f"summary{NS_SEPARATOR}"):
+                            summary_shortname = fom["origin_type"].split(NS_SEPARATOR)[1]
+                            if "FOM Summary Statistics" not in app_dict[wl_name]:
+                                app_dict[wl_name]["FOM Summary Statistics"] = set()
+                            app_dict[wl_name]["FOM Summary Statistics"].add(summary_shortname)
 
-                        app_dict[exp["workload_name"]]["FOMs"].add(fom["name"])
+                        app_dict[wl_name]["FOMs"].add(fom["name"])
                 else:
                     # All other objects
                     if fom["origin_type"] in OBJECT_NAMES:
@@ -442,7 +430,9 @@ def generate_result_index(experiments: list, all_vars=False, where_query=None):
                 continue
             for pattern in patterns:
                 expansion_strs.update(expansion_pattern.findall(pattern))
-            result_index["applications"][app][workload]["Template Variables"] = expansion_strs
+            result_index[namespace.application][app][workload][
+                "Template Variables"
+            ] = expansion_strs
 
     return result_index
 
@@ -450,7 +440,7 @@ def generate_result_index(experiments: list, all_vars=False, where_query=None):
 def get_all_foms(result_index):
     all_foms = set()
     for obj_type, obj_type_dict in result_index.items():
-        if obj_type == "applications":
+        if obj_type == namespace.application:
             for app_dict in obj_type_dict.values():
                 for wl_dict in app_dict.values():
                     all_foms.update(wl_dict["FOMs"])
@@ -487,7 +477,7 @@ def extract_data(experiments: List[dict], foms: List[str], variables: List[str],
     pd = import_pandas()
     extracted_data = []
     for exp in experiments:
-        for context in exp["CONTEXTS"]:
+        for context in exp[ResultKeys.CONTEXTS]:
             for fom in context["foms"]:
                 # Create one DataFrame row per FOM per context per experiment
                 if fom["name"] in foms:
@@ -517,8 +507,8 @@ def extract_data(experiments: List[dict], foms: List[str], variables: List[str],
                         for var in variables:
                             if var in exp:
                                 exp_data[var] = exp[var]
-                            elif var in exp["RAMBLE_VARIABLES"]:
-                                exp_data[var] = exp["RAMBLE_VARIABLES"][var]
+                            elif var in exp[ResultKeys.VARIABLES]:
+                                exp_data[var] = exp[ResultKeys.VARIABLES][var]
                             elif var in _ADDITIONAL_VARS:
                                 continue
                             else:
@@ -1079,7 +1069,7 @@ class FomPlot(PlotGenerator):
                 f'fom_origin_type == "summary::{SummaryFoms.N_TOTAL.value}")'
             ).copy()
 
-            scale_var = "experiment_namespace"
+            scale_var = ReportVars.EXP_NS.value
 
             series_results[ReportVars.FOM_VALUE.value] = to_numeric_if_possible(
                 series_results[ReportVars.FOM_VALUE.value]
@@ -1113,7 +1103,7 @@ class FomPlot(PlotGenerator):
             unit = series_results.loc[:, ReportVars.FOM_UNITS.value].iloc[0]
 
             perf_measure = fom
-            series = "experiment_name"
+            series = ReportVars.EXP_NAME.value
             self.draw(perf_measure, scale_var, series, unit, pdf_report)
 
     # TODO: dry bar plot drawing
@@ -1193,12 +1183,12 @@ class ComparisonPlot(PlotGenerator):
                 dimensions.append(input_spec)
 
         if not dimensions:
-            dimensions.append("experiment_name")
+            dimensions.append(ReportVars.EXP_NAME.value)
 
         raw_results = extract_data(self.exp_results, foms, dimensions, where_query=self.where)
 
         if self.simplify_names:
-            for col in ["experiment_name", "experiment_namespace"]:
+            for col in [ReportVars.EXP_NAME.value, ReportVars.EXP_NS.value]:
                 if col in raw_results.columns:
                     raw_results, stripped_prefix = simplify_experiment_names(
                         raw_results, index_col=col

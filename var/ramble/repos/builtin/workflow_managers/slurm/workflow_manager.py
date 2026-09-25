@@ -21,20 +21,20 @@ from spack.util.executable import (
 
 # Mapping from squeue/sacct status to Ramble status
 _STATUS_MAP = {
-    "PD": "SUBMITTED",
-    "R": "RUNNING",
-    "CF": "SETUP",
+    "PD": ExperimentStatus.SUBMITTED,
+    "R": ExperimentStatus.RUNNING,
+    "CF": ExperimentStatus.SETUP,
     # Regard completing as complete
-    "CG": "COMPLETE",
-    "COMPLETING": "COMPLETE",
-    "CA": "COMPLETE",
-    "COMPLETED": "COMPLETE",
-    "CANCELLED": "CANCELLED",
-    "CANCELLED+": "CANCELLED",
-    "F": "FAILED",
-    "FAILED": "FAILED",
-    "TO": "TIMEOUT",
-    "TIMEOUT": "TIMEOUT",
+    "CG": ExperimentStatus.COMPLETE,
+    "COMPLETING": ExperimentStatus.COMPLETE,
+    "CA": ExperimentStatus.COMPLETE,
+    "COMPLETED": ExperimentStatus.COMPLETE,
+    "CANCELLED": ExperimentStatus.CANCELLED,
+    "CANCELLED+": ExperimentStatus.CANCELLED,
+    "F": ExperimentStatus.FAILED,
+    "FAILED": ExperimentStatus.FAILED,
+    "TO": ExperimentStatus.TIMEOUT,
+    "TIMEOUT": ExperimentStatus.TIMEOUT,
 }
 
 
@@ -285,12 +285,7 @@ class Slurm(WorkflowManagerBase):
 
         self.runner.set_dry_run(workspace.dry_run)
         wm_status_raw = self.runner.get_status(job_id)
-        wm_status = _STATUS_MAP.get(wm_status_raw)
-        status = (
-            getattr(ExperimentStatus, wm_status)
-            if wm_status and hasattr(ExperimentStatus, wm_status)
-            else ExperimentStatus.UNRESOLVED
-        )
+        status = _STATUS_MAP.get(wm_status_raw, ExperimentStatus.UNRESOLVED)
         if status == ExperimentStatus.UNRESOLVED:
             logger.warn(
                 f"The slurm workflow manager failed to resolve the status of job {job_id}. "

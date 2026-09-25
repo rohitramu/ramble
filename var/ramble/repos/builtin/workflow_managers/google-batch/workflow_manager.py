@@ -18,14 +18,14 @@ from spack.util.executable import ProcessError
 
 # Mapping from batch status to Ramble status
 _STATUS_MAP = {
-    "UNRESOLVED": "UNRESOLVED",
-    "UNQUEUED": "UNQUEUED",
-    "QUEUED": "SUBMITTED",
-    "SCHEDULED": "SUBMITTED",
-    "FAILED": "FAILED",
-    "RUNNING": "RUNNING",
-    "SUCCEEDED": "COMPLETE",
-    "DELETION_IN_PROGRESS": "CANCELLED",
+    "UNRESOLVED": ExperimentStatus.UNRESOLVED,
+    "UNQUEUED": ExperimentStatus.UNQUEUED,
+    "QUEUED": ExperimentStatus.SUBMITTED,
+    "SCHEDULED": ExperimentStatus.SUBMITTED,
+    "FAILED": ExperimentStatus.FAILED,
+    "RUNNING": ExperimentStatus.RUNNING,
+    "SUCCEEDED": ExperimentStatus.COMPLETE,
+    "DELETION_IN_PROGRESS": ExperimentStatus.CANCELLED,
 }
 
 
@@ -238,9 +238,7 @@ class GoogleBatch(WorkflowManagerBase):
         project = expander.expand_var_name("batch_project")
         location = expander.expand_var_name("batch_job_region")
         wm_status_raw = self.runner.get_status(project, location, job_name)
-        wm_status = _STATUS_MAP.get(wm_status_raw)
-        if wm_status is not None and hasattr(ExperimentStatus, wm_status):
-            status = getattr(ExperimentStatus, wm_status)
+        status = _STATUS_MAP.get(wm_status_raw, ExperimentStatus.UNRESOLVED)
         if status == ExperimentStatus.UNRESOLVED:
             logger.warn(
                 f"The {self.name} workflow manager failed to resolve the status of job {job_name}.\n "

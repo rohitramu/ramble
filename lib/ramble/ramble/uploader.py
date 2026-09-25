@@ -10,13 +10,15 @@ import json
 import math
 import os
 import sys
-from enum import Enum
+from enum import Enum, auto
 
 import jsonschema
 
 import ramble.config
 import ramble.util.version
 from ramble.config import ConfigError
+from ramble.experiment_result import ExperimentStatus, ResultKeys
+from ramble.keywords import keywords
 from ramble.schema.db import db_schema_version
 from ramble.schema.experiment import experiment_schema, experiment_schema_version
 from ramble.schema.experiments_metadata import (
@@ -30,7 +32,11 @@ from ramble.util.logger import logger
 
 default_node_type_val = "Not Specified"
 
-uploader_types = Enum("uploader_types", ["BigQuery", "PrintOnly", "SQLite"])
+
+class uploader_types(Enum):
+    BigQuery = auto()
+    PrintOnly = auto()
+    SQLite = auto()
 
 
 def get_utc_timestamp() -> str:
@@ -168,17 +174,17 @@ class Experiment:
         self.foms = []
         self.software = []
         self.data = data
-        self.application_name = data["application_name"]
-        self.workspace_name = data["RAMBLE_VARIABLES"]["workspace_name"]
+        self.application_name = data[keywords.application_name]
+        self.workspace_name = data[ResultKeys.VARIABLES][keywords.workspace_name]
         self.workspace_hash = workspace_hash
-        self.workload_name = data["workload_name"]
+        self.workload_name = data[keywords.workload_name]
         self.bulk_hash = None  # proxy for workspace or "uploaded with"
-        self.n_nodes = int(data["n_nodes"])
-        self.processes_per_node = int(data["processes_per_node"])
-        self.n_ranks = int(data["n_ranks"])
-        self.n_threads = int(data["n_threads"])
+        self.n_nodes = int(data[keywords.n_nodes])
+        self.processes_per_node = int(data[keywords.processes_per_node])
+        self.n_ranks = int(data[keywords.n_ranks])
+        self.n_threads = int(data[keywords.n_threads])
         self.node_type = default_node_type_val
-        self.status = data["RAMBLE_STATUS"]
+        self.status = data[keywords.RAMBLE_STATUS]
         self.user = get_user()
 
         # FIXME: this is no longer strictly needed since it is just a concat of known properties
@@ -222,7 +228,7 @@ class Experiment:
         # For now we avoid setting them to a reduced set of information to
         # maintain backwards database compatibiilty but also avoiding
         # large un-needed uploads
-        data_copy["CONTEXTS"] = []
+        data_copy[ResultKeys.CONTEXTS] = []
 
         del j["foms"]
         del j["software"]
@@ -314,12 +320,12 @@ def format_data(data_in):
 
         upload_failed = ramble.config.get("config:upload:push_failed")
 
-        if exp["RAMBLE_STATUS"] == "SUCCESS" or upload_failed:
-            e = Experiment(exp["name"], data_in["workspace_hash"], exp, current_dateTime)
+        if exp[keywords.RAMBLE_STATUS] == ExperimentStatus.SUCCESS or upload_failed:
+            e = Experiment(exp[ResultKeys.NAME], data_in["workspace_hash"], exp, current_dateTime)
             results.append(e)
             # experiment_id = exp.hash()
             # 'experiment_id': experiment_id,
-            for context in exp["CONTEXTS"]:
+            for context in exp[ResultKeys.CONTEXTS]:
                 for fom in context["foms"]:
                     # TODO: check on value to make sure it's a number
                     e.foms.append(
@@ -333,8 +339,8 @@ def format_data(data_in):
                         }
                     )
 
-            if "SOFTWARE" in exp:
-                for software_list in exp["SOFTWARE"].values():
+            if ResultKeys.SOFTWARE in exp:
+                for software_list in exp[ResultKeys.SOFTWARE].values():
                     for software in software_list:
                         e.software.append(
                             {
@@ -346,7 +352,7 @@ def format_data(data_in):
                                 "variants": software["variants"],
                             }
                         )
-            determine_node_type(e, exp["CONTEXTS"])
+            determine_node_type(e, exp[ResultKeys.CONTEXTS])
 
     return results
 
