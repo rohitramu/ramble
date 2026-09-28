@@ -7,14 +7,24 @@
 # except according to those terms.
 
 import re
-from enum import Enum
+from enum import Enum, auto
 
 import ramble.error
 from ramble.repository import type_definitions
 from ramble.util.logger import logger
 
-key_type = Enum("key_type", ["reserved", "optional", "required"])
-output_level = Enum("output_level", ["key", "variable"])
+
+class key_type(Enum):
+    reserved = auto()
+    optional = auto()
+    required = auto()
+
+
+class output_level(Enum):
+    key = auto()
+    variable = auto()
+
+
 default_keys = {
     "workspace_name": {"type": key_type.reserved, "level": output_level.variable},
     "workspace": {"type": key_type.reserved, "level": output_level.variable},
@@ -105,58 +115,10 @@ class Keywords:
                   specific inputs to further configure the experiment.
     """
 
-    workspace_name: str
-    workspace: str
-    workspace_root: str
-    workspace_configs: str
-    workspace_software: str
-    workspace_logs: str
-    workspace_inputs: str
-    workspace_experiments: str
-    workspace_shared: str
-    workspace_archives: str
-    workspace_deployments: str
-    application_name: str
-    application_spec: str
-    application_run_dir: str
-    application_input_dir: str
-    application_namespace: str
-    application_version: str
-    simplified_application_namespace: str
-    workload_name: str
-    workload_run_dir: str
-    workload_input_dir: str
-    workload_namespace: str
-    simplified_workload_namespace: str
-    workload_group: str
-    license_input_dir: str
-    experiments_file: str
-    experiment_name: str
-    experiment_hash: str
-    experiment_run_dir: str
-    experiment_status: str
-    RAMBLE_STATUS: str
-    experiment_index: str
-    experiment_namespace: str
-    simplified_experiment_namespace: str
-    log_dir: str
-    log_file: str
-    err_file: str
-    env_path: str
-    input_name: str
-    repeat_index: str
-    spec_name: str
-    env_name: str
-    n_ranks: str
-    n_nodes: str
-    processes_per_node: str
-    n_threads: str
-    batch_submit: str
-    mpi_command: str
-    workload_template_name: str
-    experiment_template_name: str
-    unformatted_command: str
-    unformatted_command_without_logs: str
+    # Keyword attributes are set dynamically in update_keys(). This is only
+    # reached for unknown attributes, and tells type checkers keywords are str.
+    def __getattr__(self, name: str) -> str:
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     def __init__(self, extra_keys=None):
         # Merge in additional Keys:

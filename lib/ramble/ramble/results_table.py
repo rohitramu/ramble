@@ -9,6 +9,7 @@
 import copy
 import os
 
+from ramble.namespace import namespace
 from ramble.util.file_util import create_symlink
 from ramble.util.logger import logger
 from ramble.util.module_utils import import_pandas
@@ -18,7 +19,7 @@ from ramble.util.naming import match_pattern
 class ResultsColumn:
     """Class representing a single column in a results table"""
 
-    _where_name = "where"
+    _where_name = namespace.where
     _column_attrs = [
         "name",
         "expression",
