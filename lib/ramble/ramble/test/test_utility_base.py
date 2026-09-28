@@ -7,6 +7,7 @@
 # except according to those terms.
 
 from ramble.repository import ObjectTypes, get
+from ramble.toolkit import UtilityBase, env_append, env_prepend, provides_executable, variable
 
 
 def test_utility_base_validate_exact_version_via_vcs(monkeypatch):
@@ -252,23 +253,24 @@ def test_utility_base_validate_versions_with_path(monkeypatch):
     assert spack_inst.availability_error is None
 
 
-class _MockUtility(get("spack", ObjectTypes.utilities).__class__):  # type: ignore
+class _MockUtility(UtilityBase):
     name = "mock_util"
-    class_variants = {
-        "dummy_variant": {"name": "dummy_variant", "default": "True", "description": "dummy"}
-    }
-    env_prepends = {"default": [{"var": "PATH", "value": "/mock/path"}]}
-    env_appends = {"default": [{"var": "LD_LIBRARY_PATH", "value": "/mock/lib"}]}
-    provided_executables = {
-        "mock_exe_no_ver": [{"executable": "mock_exe_no_ver"}],
-        "mock_exe_with_ver": [
-            {
-                "executable": "mock_exe_with_ver",
-                "version_cmd": "mock_exe_with_ver --version",
-                "version_regex": r"Version (.*)",
-            }
-        ],
-    }
+
+    variable("path", default="system", description="Path to mock_util", scoped=True)
+    env_prepend("PATH", "/mock/path")
+    env_append("LD_LIBRARY_PATH", "/mock/lib")
+
+
+class _MockUtilityNoVersion(_MockUtility):
+    provides_executable("mock_exe_no_ver")
+
+
+class _MockUtilityWithVersion(_MockUtility):
+    provides_executable(
+        "mock_exe_with_ver",
+        version_cmd="mock_exe_with_ver --version",
+        version_regex=r"Version (.*)",
+    )
 
 
 def test_utility_base_variants():
@@ -279,7 +281,7 @@ def test_utility_base_variants():
 
 def test_utility_base_validate_versions_no_version_cmd(monkeypatch):
     """Test lines 262-263: exact_version requested but no version_cmd."""
-    inst = _MockUtility("/mock/path")
+    inst = _MockUtilityNoVersion("/mock/path")
 
     def mock_shutil_which(cmd, *args, **kwargs):
         return "/mock/path/mock_exe_no_ver"
@@ -291,19 +293,14 @@ def test_utility_base_validate_versions_no_version_cmd(monkeypatch):
 
     monkeypatch.setattr(_MockUtility, "_check_exact_match_via_vcs", mock_check_vcs)
 
-    original = inst.provided_executables
-    inst.provided_executables = {"mock_exe_no_ver": original["mock_exe_no_ver"]}
-
     res = inst.validate_versions(exact_version="1.0.0")
     assert res is False
     assert "but no version command is defined" in inst.availability_error
 
-    inst.provided_executables = original
-
 
 def test_utility_base_validate_versions_regex_fails_but_vcs_true(monkeypatch):
     """Test lines 212-217: regex fails but exact_match_via_vcs is True."""
-    inst = _MockUtility("/mock/path")
+    inst = _MockUtilityWithVersion("/mock/path")
 
     def mock_shutil_which(cmd, *args, **kwargs):
         return "/mock/path/mock_exe_with_ver"
@@ -325,12 +322,8 @@ def test_utility_base_validate_versions_regex_fails_but_vcs_true(monkeypatch):
 
     monkeypatch.setattr("subprocess.run", mock_subprocess_run)
 
-    original = inst.provided_executables
-    inst.provided_executables = {"mock_exe_with_ver": original["mock_exe_with_ver"]}
-
     res = inst.validate_versions(exact_version="1.0.0")
     assert res is True
-    inst.provided_executables = original
 
 
 def test_utility_base_get_env_workspace_modifications():
