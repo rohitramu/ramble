@@ -254,21 +254,23 @@ def test_utility_base_validate_versions_with_path(monkeypatch):
 
 class _MockUtility(get("spack", ObjectTypes.utilities).__class__):  # type: ignore
     name = "mock_util"
-    class_variants = {
-        "dummy_variant": {"name": "dummy_variant", "default": "True", "description": "dummy"}
-    }
-    env_prepends = {"default": [{"var": "PATH", "value": "/mock/path"}]}
-    env_appends = {"default": [{"var": "LD_LIBRARY_PATH", "value": "/mock/lib"}]}
-    provided_executables = {
-        "mock_exe_no_ver": [{"executable": "mock_exe_no_ver"}],
-        "mock_exe_with_ver": [
-            {
-                "executable": "mock_exe_with_ver",
-                "version_cmd": "mock_exe_with_ver --version",
-                "version_regex": r"Version (.*)",
-            }
-        ],
-    }
+
+    def __init__(self, file_path):
+        super().__init__(file_path)
+        # Directive dictionaries are class descriptors, so plain class-level
+        # assignments are overridden. Set the mock values on the instance.
+        self.env_prepends = {"default": [{"var": "PATH", "value": "/mock/path"}]}
+        self.env_appends = {"default": [{"var": "LD_LIBRARY_PATH", "value": "/mock/lib"}]}
+        self.provided_executables = {
+            "mock_exe_no_ver": [{"executable": "mock_exe_no_ver"}],
+            "mock_exe_with_ver": [
+                {
+                    "executable": "mock_exe_with_ver",
+                    "version_cmd": "mock_exe_with_ver --version",
+                    "version_regex": r"Version (.*)",
+                }
+            ],
+        }
 
 
 def test_utility_base_variants():
