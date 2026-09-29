@@ -15,6 +15,7 @@ import ramble.success_criteria
 import ramble.util.lock as lk
 from ramble.analysis.base import AnalysisStrategyBase
 from ramble.experiment_result import ExperimentStatus
+from ramble.success_criteria import SuccessCriteriaResult
 from ramble.util.foms import NULL_CONTEXT as _NULL_CONTEXT
 from ramble.util.logger import logger
 
@@ -231,9 +232,9 @@ class ForwardAnalysisStrategy(AnalysisStrategyBase):
             else:
                 criteria_name = f"config::{criteria_scope}::{criteria_obj.name}"
             if criteria_obj.ok():
-                app.result.success_criteria[criteria_name] = "PASSED"
+                app.result.success_criteria[criteria_name] = SuccessCriteriaResult.PASSED
             else:
-                app.result.success_criteria[criteria_name] = "FAILED"
+                app.result.success_criteria[criteria_name] = SuccessCriteriaResult.FAILED
 
         for context_key, fom_map in fom_values.items():
             metadata = context_metadata[context_key]

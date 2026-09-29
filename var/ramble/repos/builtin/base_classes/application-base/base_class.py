@@ -60,6 +60,11 @@ from ramble.language.shared_language import (
     variant,
 )
 from ramble.pipeline import pipelines as pipeline_enum
+from ramble.success_criteria import (
+    APPLICATION_FUNCTION_CRITERIA_NAME,
+    SuccessCriteriaMode,
+    SuccessCriteriaScope,
+)
 from ramble.util import cleaner, conversions, json_util
 from ramble.util.foms import NULL_CONTEXT as _NULL_CONTEXT
 from ramble.util.foms import (
@@ -654,7 +659,9 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
 
         if success_criteria:
             for conf in success_criteria:
-                self.success_list.add_criteria("experiment", **conf)
+                self.success_list.add_criteria(
+                    SuccessCriteriaScope.EXPERIMENT, **conf
+                )
 
     def build_phase_order(self):
         if self._pipeline_graphs is not None:
@@ -1214,11 +1221,11 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
         # Add variables from success criteria
         criteria_list = self.success_list
         for criteria, _ in criteria_list.all_criteria():
-            if criteria.mode == "fom_comparison":
+            if criteria.mode == SuccessCriteriaMode.FOM_COMPARISON:
                 self.expander.expand_var(criteria.fom_formula)
                 self.expander.expand_var(criteria.fom_name)
                 self.expander.expand_var(criteria.fom_context)
-            elif criteria.mode == "application_function":
+            elif criteria.mode == SuccessCriteriaMode.APPLICATION_FUNCTION:
                 self.evaluate_success()
 
         if self.package_manager is not None:
@@ -3974,7 +3981,7 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
         inmem_fom_defs = {}
 
         # Add the object defined criteria
-        criteria_list.flush_scope("object_definitions")
+        criteria_list.flush_scope(SuccessCriteriaScope.OBJECT_DEFINITIONS)
 
         resolved_criteria = {
             crit.name for crit, _ in criteria_list.all_criteria()
@@ -4009,7 +4016,7 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
                         continue
 
                     resolved_criteria.add(criteria)
-                    if conf["mode"] == "string":
+                    if conf["mode"] == SuccessCriteriaMode.STRING:
                         match = (
                             self.expander.expand_var(conf["match"])
                             if conf["match"] is not None
@@ -4021,7 +4028,7 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
                             else None
                         )
                         criteria_list.add_criteria(
-                            "object_definitions",
+                            SuccessCriteriaScope.OBJECT_DEFINITIONS,
                             criteria,
                             mode=conf["mode"],
                             match=match,
@@ -4029,9 +4036,9 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
                             anti_match=anti_match,
                             owning_object=obj_inst,
                         )
-                    elif conf["mode"] == "fom_comparison":
+                    elif conf["mode"] == SuccessCriteriaMode.FOM_COMPARISON:
                         criteria_list.add_criteria(
-                            "object_definitions",
+                            SuccessCriteriaScope.OBJECT_DEFINITIONS,
                             criteria,
                             conf["mode"],
                             fom_name=conf["fom_name"],
@@ -4040,11 +4047,11 @@ class ApplicationBase(ObjectMixin, metaclass=DirectiveMeta):
                             owning_object=obj_inst,
                         )
 
-        if "_application_function" not in resolved_criteria:
+        if APPLICATION_FUNCTION_CRITERIA_NAME not in resolved_criteria:
             criteria_list.add_criteria(
-                scope="object_definitions",
-                name="_application_function",
-                mode="application_function",
+                scope=SuccessCriteriaScope.OBJECT_DEFINITIONS,
+                name=APPLICATION_FUNCTION_CRITERIA_NAME,
+                mode=SuccessCriteriaMode.APPLICATION_FUNCTION,
                 owning_object=self,
             )
 
