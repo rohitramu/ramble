@@ -13,6 +13,36 @@ from ramble.util.foms import NULL_CONTEXT, get_literal_from_regex
 from ramble.util.logger import logger
 
 
+class SuccessCriteriaMode:
+    """Valid modes for a success criteria.
+
+    These values are part of the user-facing API (the ``success_criteria``
+    directive and workspace configuration), so they must not change.
+    """
+
+    STRING = "string"
+    APPLICATION_FUNCTION = "application_function"
+    FOM_COMPARISON = "fom_comparison"
+
+
+class SuccessCriteriaScope:
+    """Scopes a success criteria can be defined in."""
+
+    OBJECT_DEFINITIONS = "object_definitions"
+    EXPERIMENT = "experiment"
+
+
+class SuccessCriteriaResult:
+    """Result values recorded for each success criteria during analysis."""
+
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+
+
+#: Name of the implicit criteria that calls the application's success function
+APPLICATION_FUNCTION_CRITERIA_NAME = "_application_function"
+
+
 class ScopedCriteriaList:
     """A scoped list of success criteria
 
@@ -21,20 +51,18 @@ class ScopedCriteriaList:
 
     Possible scopes are:
      - object_definitions
-     - application
-     - workload
      - experiment
 
     To see if success was met, all criteria will be checked and are AND-ed together.
     """
 
     _valid_scopes = [
-        "object_definitions",
-        "experiment",
+        SuccessCriteriaScope.OBJECT_DEFINITIONS,
+        SuccessCriteriaScope.EXPERIMENT,
     ]
     _flush_scopes = {
-        "experiment": ["experiment"],
-        "object_definitions": ["object_definitions"],
+        SuccessCriteriaScope.EXPERIMENT: [SuccessCriteriaScope.EXPERIMENT],
+        SuccessCriteriaScope.OBJECT_DEFINITIONS: [SuccessCriteriaScope.OBJECT_DEFINITIONS],
     }
 
     def __init__(self):
@@ -106,7 +134,11 @@ class SuccessCriteria:
     experiment.
     """
 
-    _valid_modes = ["string", "application_function", "fom_comparison"]
+    _valid_modes = [
+        SuccessCriteriaMode.STRING,
+        SuccessCriteriaMode.APPLICATION_FUNCTION,
+        SuccessCriteriaMode.FOM_COMPARISON,
+    ]
     _success_function = "evaluate_success"
 
     def __init__(
@@ -137,7 +169,7 @@ class SuccessCriteria:
         self.owner = owning_object
         self.pre_filter = ""
 
-        if mode == "string":
+        if mode == SuccessCriteriaMode.STRING:
             if match is None and anti_match is None:
                 logger.die(
                     f'Success criteria with mode="{mode}" '
@@ -156,7 +188,7 @@ class SuccessCriteria:
                 self.pre_filter = get_literal_from_regex(anti_match)
             self.file = file
 
-        elif mode == "fom_comparison":
+        elif mode == SuccessCriteriaMode.FOM_COMPARISON:
             if formula is None or fom_name is None:
                 logger.die(
                     f'Success criteria with mode="{mode}" '
@@ -168,18 +200,18 @@ class SuccessCriteria:
 
     def passed(self, test=None, app_inst=None, fom_values=None):
         logger.debug(f"Testing criteria {self.name} mode = {self.mode}")
-        if self.mode == "string":
+        if self.mode == SuccessCriteriaMode.STRING:
             if self.match is not None:
                 if self.pre_filter and self.pre_filter not in test:
                     return False
                 match_obj = self.match.match(test)
                 if match_obj:
                     return True
-        elif self.mode == "application_function":
+        elif self.mode == SuccessCriteriaMode.APPLICATION_FUNCTION:
             if hasattr(app_inst, self._success_function):
                 func = getattr(app_inst, self._success_function)
                 return func()
-        elif self.mode == "fom_comparison":
+        elif self.mode == SuccessCriteriaMode.FOM_COMPARISON:
             if fom_values is None:
                 logger.die(
                     f'Success criteria of mode="{self.mode}" requires '
@@ -238,7 +270,7 @@ class SuccessCriteria:
 
     def anti_matched(self, test=None):
         logger.debug(f"Testing anti-criterion {self.name} mode = {self.mode}")
-        if self.mode == "string":
+        if self.mode == SuccessCriteriaMode.STRING:
             if self.anti_match is not None:
                 if self.pre_filter and self.pre_filter not in test:
                     return False

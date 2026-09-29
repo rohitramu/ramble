@@ -174,3 +174,33 @@ def test_success_criteria_globbing():
         formula="{value} > 0",
     )
     assert not crit4.passed(app_inst=app_inst, fom_values=fom_values)
+
+
+def test_success_criteria_constant_values():
+    """Mode, scope, and result values are user-facing and must remain stable."""
+    from ramble.success_criteria import (
+        ScopedCriteriaList,
+        SuccessCriteria,
+        SuccessCriteriaMode,
+        SuccessCriteriaResult,
+        SuccessCriteriaScope,
+    )
+
+    # Modes are used in the success_criteria directive and workspace configs
+    assert SuccessCriteriaMode.STRING == "string"
+    assert SuccessCriteriaMode.APPLICATION_FUNCTION == "application_function"
+    assert SuccessCriteriaMode.FOM_COMPARISON == "fom_comparison"
+    assert set(SuccessCriteria._valid_modes) == {
+        "string",
+        "application_function",
+        "fom_comparison",
+    }
+
+    # Scopes appear in reported criteria names (config::<scope>::<name>)
+    assert SuccessCriteriaScope.OBJECT_DEFINITIONS == "object_definitions"
+    assert SuccessCriteriaScope.EXPERIMENT == "experiment"
+    assert set(ScopedCriteriaList._valid_scopes) == {"object_definitions", "experiment"}
+
+    # Results are written to results files
+    assert SuccessCriteriaResult.PASSED == "PASSED"
+    assert SuccessCriteriaResult.FAILED == "FAILED"
