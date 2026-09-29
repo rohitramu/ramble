@@ -8,38 +8,44 @@
 
 import functools
 from collections.abc import Sequence
-from enum import Enum
+from enum import Enum, auto
 from typing import Any, Callable, Dict, Optional, Union
 
 import ramble.error
 import ramble.util.colors as color
 from ramble.expander import Expander
+from ramble.keywords import keywords
+from ramble.namespace import namespace
 
 from spack.util.spack_yaml import syaml_bool
 
 reserved_variants = {
     "modifier",
-    "package_manager",
+    namespace.package_manager,
     "package_manager_prefix",
-    "system",
-    "platform",
-    "version",
-    "workflow_manager",
-    "workload_group",
-    "is_repeat_child",
-    "is_repeat_parent",
-    "repeat_index",
+    namespace.system,
+    namespace.platform,
+    namespace.version,
+    namespace.workflow_manager,
+    keywords.workload_group,
+    keywords.is_repeat_child,
+    keywords.is_repeat_parent,
+    keywords.repeat_index,
 }
 
 standard_variants: Dict[str, Dict[str, Any]] = {
-    "containerized": {
+    namespace.containerized: {
         "default": False,
         "values": (True, False),
         "description": "Whether this experiment is run inside a container",
     },
 }
 
-variant_types = Enum("variant_types", ["default", "experiment", "version"])
+
+class variant_types(Enum):
+    default = auto()
+    experiment = auto()
+    version = auto()
 
 
 def invalidates_cache(func):
